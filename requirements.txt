@@ -1,0 +1,38 @@
+# ── Core ──────────────────────────────────────────────────────────────────────
+fastapi>=0.115.0,<1.0
+uvicorn[standard]>=0.30.0,<1.0
+python-dotenv>=1.0.0,<2.0
+pydantic>=2.7,<3.0
+pydantic-settings>=2.2,<3.0
+python-multipart>=0.0.9
+pandas>=2.0,<3.0
+
+# ── LangChain ecosystem ──────────────────────────────────────────────────────
+langchain>=0.3.0,<1.0
+langchain-openai>=0.2.0,<1.0
+langchain-community>=0.3.0,<1.0
+langgraph>=0.2.0,<1.0
+langsmith>=0.1.0,<1.0
+
+# ── Azure Identity (RBAC / DefaultAzureCredential) ───────────────────────────
+azure-identity>=1.17.0,<2.0
+
+# ── Azure AI Search ──────────────────────────────────────────────────────────
+azure-search-documents>=11.6.0,<12.0
+
+# ── RAG / Document loading ───────────────────────────────────────────────────
+unstructured>=0.15.0,<1.0
+pypdf>=4.0,<5.0
+
+# ── HTTP client / NASA ───────────────────────────────────────────────────
+httpx>=0.27.0,<1.0
+nasapy>=0.2.7
+requests>=2.31.0,<3.0
+geopy>=2.4.0,<3.0
+
+# ── Visualization ────────────────────────────────────────────────────────
+matplotlib>=3.8.0,<4.0
+tabulate>=0.9.0,<1.0
+
+# ── Observability / utilities ────────────────────────────────────────────────
+tiktoken>=0.7.0,<1.0
