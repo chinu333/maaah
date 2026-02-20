@@ -18,6 +18,7 @@ from langchain_openai import AzureChatOpenAI
 from langchain_core.messages import HumanMessage, SystemMessage
 
 from app.config import get_settings
+from app.utils.token_counter import add_tokens
 
 logger = logging.getLogger(__name__)
 
@@ -214,6 +215,7 @@ async def _llm_extract_locations(query: str) -> tuple[str, str]:
         HumanMessage(content=query),
     ]
     resp = await llm.ainvoke(messages)
+    add_tokens(resp)
     text = resp.content.strip()
     if text.startswith("```"):
         text = text.split("\n", 1)[-1].rsplit("```", 1)[0].strip()
@@ -261,7 +263,7 @@ async def invoke(query: str, *, file_path: Optional[str] = None, **kwargs) -> st
     messages = [
         SystemMessage(
             content=(
-                "You are the Traffic Agent inside MAAAH (Multi Agent App – Atlanta Hub). "
+                "You are the Traffic Agent inside Ensō (Multi Agent AI Hub). "
                 "The user asked about traffic or directions. Below is the route data "
                 "retrieved from TomTom. Present it clearly in Markdown with a brief "
                 "natural-language summary (e.g. 'Expect moderate delays…'), keep the "
@@ -274,4 +276,5 @@ async def invoke(query: str, *, file_path: Optional[str] = None, **kwargs) -> st
     ]
 
     response = await llm.ainvoke(messages)
+    add_tokens(response)
     return response.content

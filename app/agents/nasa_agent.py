@@ -23,6 +23,7 @@ from langchain_openai import AzureChatOpenAI
 from langchain_core.messages import HumanMessage, SystemMessage
 
 from app.config import get_settings
+from app.utils.token_counter import add_tokens
 
 _credential = DefaultAzureCredential()
 _token_provider = get_bearer_token_provider(
@@ -165,7 +166,7 @@ async def invoke(query: str, *, file_path: Optional[str] = None, **kwargs) -> st
     messages = [
         SystemMessage(
             content=(
-                "You are the NASA Agent inside the MAAAH multi-agent system. "
+                "You are the NASA Agent inside the Ensō multi-agent system. "
                 "Use the NASA data provided below to give the user a helpful, "
                 "well-structured answer. Include relevant links and details. "
                 "If the data is an error message, explain what happened."
@@ -177,4 +178,5 @@ async def invoke(query: str, *, file_path: Optional[str] = None, **kwargs) -> st
     ]
 
     response = await llm.ainvoke(messages)
+    add_tokens(response)
     return response.content

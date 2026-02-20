@@ -16,9 +16,10 @@ from typing import Optional
 
 from azure.identity import DefaultAzureCredential, get_bearer_token_provider
 from langchain_openai import AzureChatOpenAI
-from langchain_core.messages import HumanMessage
+from langchain_core.messages import HumanMessage, SystemMessage
 
 from app.config import get_settings
+from app.utils.token_counter import add_tokens
 
 logger = logging.getLogger(__name__)
 
@@ -45,6 +46,7 @@ def _encode_image(image_path: str) -> tuple[str, str]:
 async def invoke(query: str, *, file_path: Optional[str] = None, **kwargs) -> str:
     """Analyse an image (if provided) together with the user's text query."""
     settings = get_settings()
+    history = kwargs.get("history", "")
 
     llm = AzureChatOpenAI(
         azure_deployment=settings.azure_openai_chat_deployment,
@@ -55,6 +57,16 @@ async def invoke(query: str, *, file_path: Optional[str] = None, **kwargs) -> st
         request_timeout=settings.request_timeout,
     )
     llm.name = "multimodal-agent-llm"
+
+    # Build system message with conversation history for follow-ups
+    system_parts = ["You are a helpful multimodal assistant that can analyse images and answer questions."]
+    if history:
+        system_parts.append(
+            "\n\nBelow is the recent conversation history. Use it to answer "
+            "follow-up questions — you do NOT need the image again if the answer "
+            "is already in the conversation context.\n\n" + history
+        )
+    system_msg = SystemMessage(content="".join(system_parts))
 
     content_parts: list[dict] = [{"type": "text", "text": query}]
 
@@ -75,5 +87,6 @@ async def invoke(query: str, *, file_path: Optional[str] = None, **kwargs) -> st
             )
 
     message = HumanMessage(content=content_parts)
-    response = await llm.ainvoke([message])
+    response = await llm.ainvoke([system_msg, message])
+    add_tokens(response)
     return response.content

@@ -19,6 +19,8 @@ class AgentName(str, Enum):
     TRAFFIC = "traffic"
     SQL = "sql"
     VIZ = "viz"
+    CICP = "cicp"
+    IDA = "ida"
     GENERAL = "general"
 
 

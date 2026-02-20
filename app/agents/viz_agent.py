@@ -24,6 +24,7 @@ from langchain_core.messages import HumanMessage, SystemMessage
 from langchain_community.utilities import SQLDatabase
 
 from app.config import get_settings
+from app.utils.token_counter import add_tokens
 
 logger = logging.getLogger(__name__)
 
@@ -90,6 +91,7 @@ async def _generate_sql(llm: AzureChatOpenAI, query: str) -> str:
         HumanMessage(content=query),
     ]
     resp = await llm.ainvoke(msgs)
+    add_tokens(resp)
     sql = resp.content.strip()
     # Strip markdown fences if the model wraps them
     if sql.startswith("```"):
@@ -164,6 +166,7 @@ async def _generate_chart_code(
         )),
     ]
     resp = await llm.ainvoke(msgs)
+    add_tokens(resp)
     code = resp.content.strip()
     if code.startswith("```"):
         code = code.split("\n", 1)[-1].rsplit("```", 1)[0].strip()

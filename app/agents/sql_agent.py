@@ -15,8 +15,10 @@ from langchain_openai import AzureChatOpenAI
 from langchain_community.agent_toolkits.sql.base import create_sql_agent
 from langchain_community.agent_toolkits.sql.toolkit import SQLDatabaseToolkit
 from langchain_community.utilities import SQLDatabase
+from langchain_core.callbacks import BaseCallbackHandler
 
 from app.config import get_settings
+from app.utils.token_counter import add_tokens
 
 logger = logging.getLogger(__name__)
 
@@ -64,7 +66,7 @@ async def invoke(query: str, *, file_path: Optional[str] = None, **kwargs) -> st
         agent_type="openai-tools",
         handle_parsing_errors=True,
         prefix=(
-            "You are the SQL Agent inside MAAAH (Multi Agent App – Atlanta Hub). "
+            "You are the SQL Agent inside Ensō (Multi Agent AI Hub). "
             "You have access to a Northwind SQLite database. Answer the user's "
             "question by querying the database. Always provide:\n"
             "1. A brief natural-language summary\n"
@@ -74,5 +76,13 @@ async def invoke(query: str, *, file_path: Optional[str] = None, **kwargs) -> st
         ),
     )
 
-    result = await agent_executor.ainvoke({"input": query})
+    # Callback to capture token usage from the agent's internal LLM calls
+    class _TokenCapture(BaseCallbackHandler):
+        def on_llm_end(self, response, **kwargs):
+            for gen_list in response.generations:
+                for gen in gen_list:
+                    if hasattr(gen, "message"):
+                        add_tokens(gen.message)
+
+    result = await agent_executor.ainvoke({"input": query}, config={"callbacks": [_TokenCapture()]})
     return result.get("output", str(result))

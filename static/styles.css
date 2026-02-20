@@ -1,5 +1,5 @@
 /* ================================================================
-   MAAAH – Executive Dark Theme  ·  Two-Panel Layout
+   Ensō – Executive Dark Theme  ·  Two-Panel Layout
    ================================================================ */
 
 /* ── Variables ────────────────────────────────────────────────── */
@@ -129,7 +129,7 @@ button { font-family: inherit; }
 
 /* ── LEFT PANEL (Input / Compose) ─────────────────────────────── */
 .panel-input {
-  width: 42%; min-width: 340px;
+  width: 38%; min-width: 340px;
 }
 .panel-body {
   flex: 1; display: flex; flex-direction: column;
@@ -139,6 +139,31 @@ button { font-family: inherit; }
 }
 .panel-input .panel-body {
   justify-content: center;
+}
+
+/* Agent description bar */
+.agent-desc-bar {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 14px;
+  padding: 8px 12px;
+  background: var(--bg-surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  margin: 0;
+}
+.agent-desc-item {
+  font-size: .68rem;
+  color: #8b9fc7;
+  white-space: nowrap;
+}
+.agent-desc-item b {
+  font-weight: 600;
+  margin-right: 3px;
+  background: linear-gradient(135deg, var(--accent) 0%, var(--purple) 50%, var(--cyan) 100%);
+  background-clip: text;
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
 }
 
 /* Agent pills */
@@ -219,6 +244,16 @@ button { font-family: inherit; }
   box-shadow: 0 0 14px rgba(210,168,255,.18);
 }
 .agent-pill.called[data-agent="viz"] svg { opacity:1; stroke: var(--purple); }
+.agent-pill.called[data-agent="cicp"] {
+  background: rgba(248,81,73,.10); border-color: var(--red); color: var(--red);
+  box-shadow: 0 0 14px rgba(248,81,73,.18);
+}
+.agent-pill.called[data-agent="cicp"] svg { opacity:1; stroke: var(--red); }
+.agent-pill.called[data-agent="ida"] {
+  background: rgba(227,179,65,.10); border-color: var(--orange); color: var(--orange);
+  box-shadow: 0 0 14px rgba(227,179,65,.18);
+}
+.agent-pill.called[data-agent="ida"] svg { opacity:1; stroke: var(--orange); }
 
 /* Prompt textarea */
 .prompt-zone {
@@ -231,7 +266,7 @@ button { font-family: inherit; }
   border-radius: var(--radius);
   padding: 14px 16px;
   color: var(--text-primary);
-  font-size: .92rem; line-height: 1.7;
+  font-size: 1.05rem; line-height: 1.7;
   font-family: var(--font);
   outline: none;
   transition: border-color var(--transition), box-shadow var(--transition);
@@ -241,6 +276,79 @@ button { font-family: inherit; }
   box-shadow: 0 0 0 3px var(--accent-dim);
 }
 #messageInput::placeholder { color: var(--text-muted); }
+
+/* Response time counter */
+.rc-timer {
+  margin-left: auto;
+  font-size: .75rem;
+  font-weight: 600;
+  color: var(--accent);
+  white-space: nowrap;
+  letter-spacing: .02em;
+  opacity: .85;
+}
+
+/* Token & cost stats footer */
+.rc-stats {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 8px 20px 12px;
+  border-top: 1px solid var(--border);
+}
+.rc-stats:empty {
+  display: none;
+}
+.rc-stat-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 3px 10px;
+  border-radius: 12px;
+  font-size: .72rem;
+  font-weight: 500;
+  letter-spacing: .02em;
+}
+.rc-tokens {
+  background: rgba(88,166,255,.10);
+  color: var(--accent);
+}
+.rc-cost {
+  background: rgba(63,185,80,.10);
+  color: var(--green);
+}
+.rc-stat-detail {
+  color: var(--text-secondary);
+  font-weight: 400;
+  font-size: .68rem;
+}
+
+/* Sample question pills */
+.sample-questions {
+  display: flex; flex-direction: column; gap: 6px;
+}
+.sample-pill {
+  display: block; width: 100%;
+  padding: 9px 14px;
+  background: var(--bg-surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  color: var(--text-secondary);
+  font-size: .82rem; line-height: 1.45;
+  font-family: var(--font);
+  text-align: left;
+  cursor: pointer;
+  transition: var(--transition);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.sample-pill:hover {
+  background: var(--bg-hover);
+  color: var(--text-primary);
+  border-color: var(--accent);
+  box-shadow: 0 0 8px rgba(88,166,255,.10);
+}
 
 /* File chip */
 .file-chip {
@@ -392,8 +500,12 @@ button { font-family: inherit; }
   margin-bottom: 28px; z-index: 1;
 }
 .hint-grid {
-  display: grid; grid-template-columns: 1fr 1fr;
-  gap: 10px; z-index: 1; max-width: 360px;
+  display: grid !important;
+  grid-template-columns: repeat(3, 1fr) !important;
+  gap: 10px;
+  z-index: 1;
+  max-width: 600px;
+  width: 100%;
 }
 .hint-card {
   display: flex; flex-direction: column; gap: 2px;
@@ -462,11 +574,11 @@ button { font-family: inherit; }
 .rc-agent-badge[data-agent="multimodal"] { background: rgba(188,140,255,.12); color: var(--purple); }
 .rc-agent-badge[data-agent="nasa"]    { background: rgba(227,179,65,.12); color: var(--orange); }
 
-/* Card body – streamed response */
+/* Card body – response text */
 .rc-body {
   padding: 16px 20px 18px;
-  font-size: .9rem; line-height: 1.75;
-  color: var(--text-primary);
+  font-size: 1.05rem; line-height: 1.75;
+  color: #b0bec5;
 }
 
 /* ── Streaming cursor ─────────────────────────────────────────── */
@@ -529,8 +641,55 @@ button { font-family: inherit; }
   font-family: var(--font-mono);
   font-size: .8rem; line-height: 1.65;
   overflow-x: auto;
-  color: var(--text-primary);
+  color: #c9d1d9;
 }
+
+/* ── Syntax-highlight theme (Tokyo Night–inspired) ────────────── */
+.rc-body pre code .hljs-keyword,
+.rc-body pre code .hljs-selector-tag,
+.rc-body pre code .hljs-built_in { color: #7aa2f7; }
+
+.rc-body pre code .hljs-string,
+.rc-body pre code .hljs-addition,
+.rc-body pre code .hljs-attr { color: #9ece6a; }
+
+.rc-body pre code .hljs-comment,
+.rc-body pre code .hljs-quote { color: #6a737d; font-style: italic; }
+
+.rc-body pre code .hljs-type,
+.rc-body pre code .hljs-class .hljs-title,
+.rc-body pre code .hljs-title.class_ { color: #e0af68; }
+
+.rc-body pre code .hljs-function .hljs-title,
+.rc-body pre code .hljs-title.function_ { color: #7dcfff; }
+
+.rc-body pre code .hljs-number,
+.rc-body pre code .hljs-literal { color: #ff9e64; }
+
+.rc-body pre code .hljs-variable,
+.rc-body pre code .hljs-template-variable { color: #bb9af7; }
+
+.rc-body pre code .hljs-regexp,
+.rc-body pre code .hljs-link { color: #b4f9f8; }
+
+.rc-body pre code .hljs-symbol,
+.rc-body pre code .hljs-bullet { color: #73daca; }
+
+.rc-body pre code .hljs-meta,
+.rc-body pre code .hljs-meta .hljs-keyword { color: #89ddff; }
+
+.rc-body pre code .hljs-deletion { color: #f7768e; }
+.rc-body pre code .hljs-section { color: #7aa2f7; font-weight: 700; }
+.rc-body pre code .hljs-name { color: #7dcfff; }
+.rc-body pre code .hljs-attribute { color: #73daca; }
+.rc-body pre code .hljs-property { color: #73daca; }
+.rc-body pre code .hljs-params { color: #c9d1d9; }
+.rc-body pre code .hljs-punctuation { color: #a9b1d6; }
+.rc-body pre code .hljs-operator { color: #89ddff; }
+.rc-body pre code .hljs-tag { color: #f7768e; }
+.rc-body pre code .hljs-selector-class { color: #7dcfff; }
+.rc-body pre code .hljs-selector-id { color: #bb9af7; }
+
 /* Inline code */
 .rc-body code:not(pre code) {
   background: var(--bg-elevated);
@@ -561,19 +720,7 @@ button { font-family: inherit; }
   50%     { opacity: 1; transform: scale(1.1); }
 }
 
-/* ── Dynamic colour cycling for streamed text ─────────────────── */
-@keyframes colorShift {
-  0%   { color: var(--text-primary); }
-  25%  { color: var(--cyan); }
-  50%  { color: var(--accent-hover); }
-  75%  { color: var(--purple); }
-  100% { color: var(--text-primary); }
-}
-.stream-char {
-  animation: colorShift 2.5s ease forwards;
-}.rendered-char {
-  animation: colorShift 4s ease infinite;
-}
+
 /* ── Utility ──────────────────────────────────────────────────── */
 @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
 

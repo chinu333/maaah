@@ -1,4 +1,4 @@
-"""MAAAH – FastAPI application entry point.
+"""Ensō – FastAPI application entry point.
 
 Registers all routers, mounts static files, sets up CORS, logging,
 LangSmith tracing, and ensures the data directory exists.
@@ -44,14 +44,14 @@ async def lifespan(app: FastAPI):
     setup_tracing()
 
     logger.info(
-        "MAAAH started – Azure OpenAI endpoint=%s, deployment=%s, data_dir=%s",
+        "Ensō started – Azure OpenAI endpoint=%s, deployment=%s, data_dir=%s",
         settings.azure_openai_endpoint,
         settings.azure_openai_chat_deployment,
         settings.data_dir,
     )
     yield
     # Shutdown
-    logger.info("MAAAH shutting down")
+    logger.info("Ensō shutting down")
 
 
 # ---------------------------------------------------------------------------
@@ -59,7 +59,7 @@ async def lifespan(app: FastAPI):
 # ---------------------------------------------------------------------------
 
 app = FastAPI(
-    title="MAAAH – Multi Agent App – Atlanta Hub",
+    title="Ensō – Multi Agent AI Hub",
     version="1.0.0",
     description="Production multi-agent application powered by LangChain, LangGraph, and MCP.",
     lifespan=lifespan,
@@ -95,7 +95,7 @@ async def serve_index():
     index = STATIC_DIR / "index.html"
     if index.exists():
         return FileResponse(str(index))
-    return JSONResponse({"message": "MAAAH API is running. Place static/index.html for the UI."})
+    return JSONResponse({"message": "Ensō API is running. Place static/index.html for the UI."})
 
 
 # ---------------------------------------------------------------------------

@@ -5,6 +5,88 @@
 (function () {
   "use strict";
 
+  // ── Register HCL / Terraform grammar (not in hljs core bundle) ──
+  (function registerHCL() {
+    if (typeof hljs === "undefined") return;
+    hljs.registerLanguage("hcl", function (hljs) {
+      return {
+        name: "HCL",
+        aliases: ["terraform", "tf"],
+        contains: [
+          // Comments
+          hljs.HASH_COMMENT_MODE,
+          hljs.C_BLOCK_COMMENT_MODE,
+          // Block-level keywords (resource, provider, data, etc.)
+          {
+            className: "keyword",
+            begin: /\b(resource|data|variable|output|locals|module|provider|terraform|provisioner|connection|lifecycle|dynamic|content|moved|import|check)\b/
+          },
+          // Block-level attributes / meta
+          {
+            className: "built_in",
+            begin: /\b(backend|required_providers|required_version|depends_on|count|for_each|source|version|features|sensitive|default|description|type|validation|condition|error_message)\b/
+          },
+          // Types
+          {
+            className: "type",
+            begin: /\b(string|number|bool|list|map|set|object|tuple|any)\b/
+          },
+          // Literals
+          {
+            className: "literal",
+            begin: /\b(true|false|null)\b/
+          },
+          // Built-in functions (before opening paren)
+          {
+            className: "title function_",
+            begin: /\b(abs|ceil|floor|log|max|min|pow|signum|chomp|format|formatlist|indent|join|lower|regex|regexall|replace|split|strrev|substr|title|trim|trimprefix|trimsuffix|trimspace|upper|concat|contains|distinct|element|flatten|index|keys|length|lookup|merge|range|reverse|setintersection|setproduct|setsubtract|setunion|slice|sort|values|zipmap|base64decode|base64encode|csvdecode|jsondecode|jsonencode|urlencode|yamldecode|yamlencode|abspath|dirname|pathexpand|basename|file|fileexists|fileset|filebase64|templatefile|cidrhost|cidrnetmask|cidrsubnet|cidrsubnets|can|try|nonsensitive|tobool|tolist|tomap|tonumber|toset|tostring|one|sum|alltrue|anytrue|coalesce|coalescelist|compact|matchkeys|transpose|textdecodebase64|textencodebase64|uuid|uuidv5|bcrypt|md5|rsadecrypt|sha1|sha256|sha512|parseint|startswith|endswith)\s*\(/,
+            end: /\(/,
+            excludeEnd: true
+          },
+          // Variable references (var.xxx, local.xxx, module.xxx, etc.)
+          {
+            className: "variable",
+            begin: /\b(var|local|module|data|each|self|count|path|terraform)\.\w[\w.]*/
+          },
+          // Resource references (resource_type.name.attribute)
+          {
+            className: "variable",
+            begin: /\b[a-z][a-z0-9_]*\.[a-z][a-z0-9_]*\.[a-z][a-z0-9_]*/
+          },
+          // Strings with interpolation
+          {
+            className: "string",
+            begin: /"/,
+            end: /"/,
+            contains: [
+              hljs.BACKSLASH_ESCAPE,
+              { className: "subst", begin: /\$\{/, end: /\}/ }
+            ]
+          },
+          // Heredoc strings
+          {
+            className: "string",
+            begin: /<<-?\s*[A-Za-z_]+/,
+            end: /^\s*[A-Za-z_]+$/,
+            relevance: 0
+          },
+          // Numbers
+          {
+            className: "number",
+            begin: /\b\d+(\.\d+)?([eE][+-]?\d+)?\b/,
+            relevance: 0
+          },
+          // Operators
+          {
+            className: "operator",
+            begin: /[=!<>]=?|&&|\|\||[+\-*\/%]/,
+            relevance: 0
+          }
+        ]
+      };
+    });
+  })();
+
   // ── DOM refs ──────────────────────────────────────────────────
   const messageInput   = document.getElementById("messageInput");
   const sendBtn        = document.getElementById("sendBtn");
@@ -92,6 +174,14 @@
 
   sendBtn.addEventListener("click", () => sendMessage());
 
+  // ── Sample question pills ─────────────────────────────────────
+  document.querySelectorAll(".sample-pill").forEach((pill) => {
+    pill.addEventListener("click", () => {
+      messageInput.value = pill.dataset.question;
+      messageInput.focus();
+    });
+  });
+
   // ── Clear responses ───────────────────────────────────────────
   clearBtn.addEventListener("click", () => {
     responseList.innerHTML = "";
@@ -171,6 +261,14 @@
     responseList.appendChild(card);
     scrollToBottom();
 
+    // Start response-time counter
+    const timerEl = card.querySelector(".rc-timer");
+    const startTime = performance.now();
+    const timerInterval = setInterval(() => {
+      const elapsed = ((performance.now() - startTime) / 1000).toFixed(1);
+      timerEl.textContent = elapsed + "s";
+    }, 100);
+
     messageInput.value = "";
 
     // Show loading
@@ -183,6 +281,12 @@
         session_id: SESSION_ID,
       };
       if (uploadedFilePath) payload.file_path = uploadedFilePath;
+
+      // Clear file after capturing it in payload — follow-ups should
+      // use conversation memory, not re-send the same file.
+      uploadedFilePath = null;
+      fileChip.hidden = true;
+      fileChipName.textContent = "";
 
       const res = await fetch("/api/chat", {
         method: "POST",
@@ -197,6 +301,11 @@
 
       const data = await res.json();
 
+      // Freeze timer — show only server round-trip time, not rendering
+      clearInterval(timerInterval);
+      const serverTime = ((performance.now() - startTime) / 1000).toFixed(1);
+      timerEl.textContent = serverTime + "s";
+
       // Determine which agents were called
       const agentsCalled = data.agents_called || [data.agent];
 
@@ -205,6 +314,10 @@
 
       // Add badges to response card header
       updateCardBadges(card, agentsCalled);
+
+      // Add token & cost pills to response card
+      const tokenUsage = (data.metadata && data.metadata.token_usage) || {};
+      updateTokenCostPills(card, tokenUsage);
 
       // Clear loading, do streaming render
       bodyEl.innerHTML = "";
@@ -215,6 +328,9 @@
       showError(err.message);
       bodyEl.innerHTML = '<p style="color:var(--red);">⚠ ' + escapeHtml(err.message) + '</p>';
     } finally {
+      // Ensure timer is stopped (covers error path too)
+      clearInterval(timerInterval);
+
       isSending = false;
       sendBtn.disabled = false;
       messageInput.focus();
@@ -246,11 +362,21 @@
     header.appendChild(queryEl);
     header.appendChild(badges);
 
+    const timer = document.createElement("span");
+    timer.className = "rc-timer";
+    timer.textContent = "0.0s";
+    header.appendChild(timer);
+
     const body = document.createElement("div");
     body.className = "rc-body";
 
+    // Stats footer (tokens + cost — populated after response)
+    const stats = document.createElement("div");
+    stats.className = "rc-stats";
+
     card.appendChild(header);
     card.appendChild(body);
+    card.appendChild(stats);
     return card;
   }
 
@@ -266,8 +392,34 @@
     });
   }
 
+  function updateTokenCostPills(card, tokenUsage) {
+    const stats = card.querySelector(".rc-stats");
+    if (!stats || !tokenUsage.total_tokens) return;
+
+    const totalTokens = tokenUsage.total_tokens || 0;
+    const inputTokens = tokenUsage.input_tokens || 0;
+    const outputTokens = tokenUsage.output_tokens || 0;
+    const cost = tokenUsage.estimated_cost || 0;
+
+    // Token pill
+    const tokenPill = document.createElement("span");
+    tokenPill.className = "rc-stat-pill rc-tokens";
+    tokenPill.innerHTML = '⚡ <strong>' + totalTokens.toLocaleString() + '</strong> tokens'
+      + ' <span class="rc-stat-detail">(in: ' + inputTokens.toLocaleString()
+      + ' · out: ' + outputTokens.toLocaleString() + ')</span>';
+
+    // Cost pill
+    const costPill = document.createElement("span");
+    costPill.className = "rc-stat-pill rc-cost";
+    const costStr = cost < 0.01 ? '$' + cost.toFixed(4) : '$' + cost.toFixed(2);
+    costPill.innerHTML = '💰 <strong>' + costStr + '</strong>';
+
+    stats.appendChild(tokenPill);
+    stats.appendChild(costPill);
+  }
+
   // ================================================================
-  // STREAMING TEXT RENDER  (character-by-character with dynamic color)
+  // STREAMING TEXT RENDER  (character-by-character)
   // ================================================================
   async function streamRender(container, fullText) {
     // Parse markdown first to get the final HTML
@@ -278,12 +430,11 @@
     if (/!\[.*?\]\(.*?\)/.test(fullText)) {
       container.innerHTML = parsedHTML;
       enhanceCodeBlocks(container);
-      startColorCycle(container);
       scrollToBottom();
       return;
     }
 
-    // We'll stream the raw text char-by-char with color, then snap to full markdown
+    // We'll stream the raw text char-by-char, then snap to full markdown
     const plainText = fullText;
     const streamEl = document.createElement("div");
     streamEl.classList.add("streaming-cursor");
@@ -301,12 +452,7 @@
           if (ch === "\n") {
             streamEl.appendChild(document.createElement("br"));
           } else {
-            const span = document.createElement("span");
-            span.className = "stream-char";
-            span.textContent = ch;
-            // Stagger the animation start slightly for a wave effect
-            span.style.animationDelay = (i * 8) % 600 + "ms";
-            streamEl.appendChild(span);
+            streamEl.appendChild(document.createTextNode(ch));
           }
         }
         scrollToBottom();
@@ -326,7 +472,6 @@
     await sleep(200);
     container.innerHTML = parsedHTML;
     enhanceCodeBlocks(container);
-    startColorCycle(container);
     scrollToBottom();
   }
 
@@ -364,45 +509,22 @@
       const pre = block.parentElement;
       pre.insertBefore(header, pre.firstChild);
 
+      // Map language aliases to registered grammars
+      const detectedLang = langMatch ? langMatch[1].toLowerCase() : null;
+      const langMap = { terraform: "hcl", tf: "hcl" };
+      if (detectedLang && langMap[detectedLang]) {
+        block.className = "language-" + langMap[detectedLang];
+      } else if (detectedLang && !hljs.getLanguage(detectedLang)) {
+        // Unknown language — let hljs auto-detect
+        block.removeAttribute("class");
+      }
+
       // Highlight
       hljs.highlightElement(block);
     });
   }
 
   // ── Utilities ─────────────────────────────────────────────────
-  function startColorCycle(container) {
-    const skip = new Set(["PRE", "CODE", "A", "BUTTON", "SVG", "IMG"]);
-    let charIndex = 0;
-
-    function wrapTextNodes(node) {
-      if (skip.has(node.nodeName)) return;
-      if (node.closest && (node.closest("pre") || node.closest("code") || node.closest("a"))) return;
-
-      if (node.nodeType === Node.TEXT_NODE) {
-        const text = node.textContent;
-        if (!text.trim()) return;
-        const frag = document.createDocumentFragment();
-        for (const ch of text) {
-          if (ch === " " || ch === "\n") {
-            frag.appendChild(document.createTextNode(ch));
-          } else {
-            const span = document.createElement("span");
-            span.className = "rendered-char";
-            span.textContent = ch;
-            span.style.animationDelay = (charIndex * 30 % 4000) + "ms";
-            charIndex++;
-            frag.appendChild(span);
-          }
-        }
-        node.parentNode.replaceChild(frag, node);
-      } else if (node.nodeType === Node.ELEMENT_NODE) {
-        Array.from(node.childNodes).forEach(wrapTextNodes);
-      }
-    }
-
-    wrapTextNodes(container);
-  }
-
   function capitalize(s) {
     return s.charAt(0).toUpperCase() + s.slice(1);
   }

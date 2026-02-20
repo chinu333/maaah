@@ -22,8 +22,10 @@ from azure.identity import DefaultAzureCredential, get_bearer_token_provider
 from langchain_openai import AzureChatOpenAI, AzureOpenAIEmbeddings
 from langchain_community.vectorstores.azuresearch import AzureSearch
 from langchain.chains import RetrievalQA
+from langchain_core.callbacks import BaseCallbackHandler
 
 from app.config import get_settings
+from app.utils.token_counter import add_tokens
 
 logger = logging.getLogger(__name__)
 
@@ -97,10 +99,18 @@ async def invoke(query: str, *, file_path: Optional[str] = None, **kwargs) -> st
         llm=llm,
         chain_type="stuff",
         retriever=vectorstore.as_retriever(),
-        return_source_documents=False,
+        return_source_documents=True,
     )
 
-    result = await qa_chain.ainvoke({"query": clean_query})
+    # Callback to capture token usage from the chain's internal LLM call
+    class _TokenCapture(BaseCallbackHandler):
+        def on_llm_end(self, response, **kwargs):
+            for gen_list in response.generations:
+                for gen in gen_list:
+                    if hasattr(gen, "message"):
+                        add_tokens(gen.message)
+
+    result = await qa_chain.ainvoke({"query": clean_query}, config={"callbacks": [_TokenCapture()]})
     answer = result.get("result", str(result))
 
     if not answer or answer.strip().lower() in ("i don't know", "i don't know."):
@@ -108,5 +118,36 @@ async def invoke(query: str, *, file_path: Optional[str] = None, **kwargs) -> st
             f"I searched the **{settings.azure_search_index_name}** index but "
             "couldn't find relevant information. Try rephrasing your question."
         )
+
+    # ── Append citations from source documents ──────────────────
+    source_docs = result.get("source_documents", [])
+    if source_docs:
+        seen: set[str] = set()
+        citations: list[str] = []
+        for i, doc in enumerate(source_docs, 1):
+            meta = doc.metadata or {}
+            title = (
+                meta.get("title")
+                or meta.get("source")
+                or meta.get("chunk_id")
+                or meta.get("id")
+                or f"Document {i}"
+            )
+            # Deduplicate by title
+            if title in seen:
+                continue
+            seen.add(title)
+
+            parts = [f"**[{len(citations) + 1}]** {title}"]
+            if meta.get("source"):
+                parts.append(f"Source: {meta['source']}")
+            # Show page number if available
+            page = meta.get("page") or meta.get("page_number")
+            if page is not None:
+                parts.append(f"Page: {page}")
+            citations.append(" — ".join(parts))
+
+        if citations:
+            answer += "\n\n---\n**Citations:**\n" + "\n".join(citations)
 
     return answer

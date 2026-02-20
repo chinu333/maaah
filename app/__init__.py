@@ -1,1 +1,1 @@
-"""MAAAH - Multi Agent App - Atlanta Hub."""
+"""Ensō - Multi Agent AI Hub."""

@@ -1,6 +1,19 @@
-# MAAAH – Multi Agent App – Atlanta Hub
+# Ensō – Multi Agent AI Hub
 
-A production-ready, full-stack **multi-agent application** powered by LangChain, LangGraph, LangSmith, and an MCP-compatible tool server — served via FastAPI with a professional dark-themed UI. Uses **Azure OpenAI** with RBAC (`DefaultAzureCredential`), **Azure AI Search**, **Azure Maps**, **TomTom**, and **NASA** APIs.
+A production-ready, full-stack **multi-agent application** powered by LangChain, LangGraph, LangSmith, and an MCP-compatible tool server — served via FastAPI with a professional dark-themed UI. Uses **Azure OpenAI** (GPT-4.1) with RBAC (`DefaultAzureCredential`), **Azure AI Search**, **Azure Maps**, **TomTom**, and **NASA** APIs.
+
+---
+
+## Highlights
+
+- **10 specialised agents** — General, RAG, Multimodal, NASA, Weather, Traffic, SQL, Viz, CICP, IDA
+- **LLM-based auto-routing** — a GPT-4.1 classifier analyses query + conversation history to select the right agent(s)
+- **Parallel multi-agent execution** — multiple agents run concurrently via `asyncio.gather`
+- **Conversation memory** — LangGraph `MemorySaver` persists per-session history across turns
+- **Token & cost tracking** — real-time input/output token counts and estimated cost displayed per response
+- **LangSmith tracing** — full observability with `@traceable` decorators across all agents
+- **Professional dark UI** — two-panel layout, gradient header, agent description bar, sample question pills, code syntax highlighting (including custom HCL/Terraform grammar)
+- **MCP-compatible** — every agent is exposed as an MCP tool for external orchestration
 
 ---
 
@@ -16,6 +29,8 @@ A production-ready, full-stack **multi-agent application** powered by LangChain,
 | **Traffic** | Route & traffic info via TomTom with Azure Maps geocoding |
 | **SQL** | Natural-language to SQL against the Northwind SQLite database (LangChain SQL Toolkit) |
 | **Viz** | Data visualization — generates bar, pie, bubble, line, scatter charts from Northwind data |
+| **CICP** | Car Insurance Claim Processing — RAG over CICP rules index with structured claim guidance |
+| **IDA** | Interior Design Agent — analyses room images and recommends furniture from RTG Products index |
 
 ---
 
@@ -51,8 +66,9 @@ A production-ready, full-stack **multi-agent application** powered by LangChain,
 │  │  │                   ▼                                   │    │   │
 │  │  │        ┌──────────────────────┐                       │    │   │
 │  │  │        │  classify_agents()   │                       │    │   │
-│  │  │        │  (keyword + file     │                       │    │   │
-│  │  │        │   based routing)     │                       │    │   │
+│  │  │        │  (LLM-based routing  │                       │    │   │
+│  │  │        │   + conversation     │                       │    │   │
+│  │  │        │   history context)   │                       │    │   │
 │  │  │        └──────────┬───────────┘                       │    │   │
 │  │  │                   │ 1..N agents                       │    │   │
 │  │  │                   ▼                                   │    │   │
@@ -70,15 +86,15 @@ A production-ready, full-stack **multi-agent application** powered by LangChain,
 │  └──────────┬──────┬───────┬───────┬───────┬──────┬─────┬─────┘    │
 │             │      │       │       │       │      │     │           │
 │             ▼      ▼       ▼       ▼       ▼      ▼     ▼           │
-│  ┌───────┐┌────┐┌──────┐┌────┐┌───────┐┌───────┐┌───┐┌───┐        │
-│  │General││RAG ││Multi ││NASA││Weather││Traffic││SQL││Viz│        │
-│  │Agent  ││    ││modal ││    ││Agent  ││Agent  ││   ││   │        │
-│  └───┬───┘└──┬─┘└──┬───┘└──┬─┘└───┬───┘└───┬───┘└─┬─┘└─┬─┘        │
-│      │       │     │       │      │        │      │    │            │
-│      ▼       ▼     ▼       ▼      ▼        ▼      ▼    ▼            │
-│   Azure   Azure  Azure   NASA  Azure    TomTom  SQLite matplotlib  │
-│   OpenAI  AI     OpenAI  APIs  Maps     API     (NW)  + LLM       │
-│           Search (Vision)                                           │
+│  ┌───────┐┌────┐┌──────┐┌────┐┌───────┐┌───────┐┌───┐┌───┐┌────┐┌───┐│
+│  │General││RAG ││Multi ││NASA││Weather││Traffic││SQL││Viz││CICP││IDA││
+│  │Agent  ││    ││modal ││    ││Agent  ││Agent  ││   ││   ││    ││   ││
+│  └───┬───┘└──┬─┘└──┬───┘└──┬─┘└───┬───┘└───┬───┘└─┬─┘└─┬─┘└──┬─┘└─┬─┘│
+│      │       │     │       │      │        │      │    │     │    │  │
+│      ▼       ▼     ▼       ▼      ▼        ▼      ▼    ▼     ▼    ▼  │
+│   Azure   Azure  Azure   NASA  Azure    TomTom  SQLite matplt Azure Azure│
+│   OpenAI  AI     OpenAI  APIs  Maps     API     (NW)  + LLM AI Srch AI S│
+│           Search (Vision)                                    (cicp) (rtg)│
 └─────────────────────────────────────────────────────────────────────┘
 ```
 
@@ -87,13 +103,13 @@ A production-ready, full-stack **multi-agent application** powered by LangChain,
 1. **Frontend** sends `POST /api/chat` with `{ message, session_id, file_path? }`
 2. **Chat route** calls `run_workflow(query, file_path, session_id)`
 3. **LangGraph** loads conversation history from `MemorySaver` using `thread_id = session_id`
-4. **`classify_agents()`** analyses query keywords + file extension → returns 1..N agent names
+4. **`classify_agents()`** sends the query + conversation history to a GPT-4.1 classifier that returns 1..N agent names
 5. **`orchestrate_node()`** builds a history summary and calls all selected agents **in parallel** via `asyncio.gather`
 6. **MCP `dispatch()`** maps agent name → tool handler → `agent.invoke(query, history=...)`
-7. Each **agent** calls its external API / LLM and returns a Markdown string
+7. Each **agent** calls its external API / LLM and returns a Markdown string; token usage is tracked per-call
 8. Orchestrator **combines** multi-agent responses (or returns single) and **appends** the turn to memory
-9. **Chat route** returns `{ reply, agent, agents_called, session_id, timestamp }`
-10. **Frontend** renders the Markdown (with charts, code blocks, tables) and highlights the called agent pills
+9. **Chat route** returns `{ reply, agent, agents_called, session_id, timestamp, metadata: { token_usage } }`
+10. **Frontend** renders the Markdown (with charts, code blocks, tables), highlights the called agent pills, shows token count & cost pills, and displays response latency
 
 ---
 
@@ -120,18 +136,21 @@ maaah/
 │   │   ├── weather_agent.py     # Azure Maps weather + LLM location extraction
 │   │   ├── traffic_agent.py     # TomTom routing + Azure Maps geocoding
 │   │   ├── sql_agent.py         # LangChain SQL Toolkit (Northwind)
-│   │   └── viz_agent.py         # matplotlib chart generation
+│   │   ├── viz_agent.py         # matplotlib chart generation
+│   │   ├── cicp_agent.py        # Car Insurance Claim Processing (RAG)
+│   │   └── ida_agent.py         # Interior Design Agent (multimodal + RAG)
 │   ├── mcp/
 │   │   └── server.py            # MCP-compatible tool server + dispatch
 │   ├── graph/
-│   │   └── workflow.py          # LangGraph orchestration + MemorySaver
+│   │   └── workflow.py          # LangGraph orchestration + LLM classifier + MemorySaver
 │   └── utils/
 │       ├── tracing.py           # LangSmith setup
+│       ├── token_counter.py     # Request-scoped token & cost accumulator
 │       └── file_utils.py        # Upload helpers
 ├── static/
 │   ├── index.html               # Two-panel dark-themed UI
-│   ├── styles.css               # Executive dark theme, agent pill styles
-│   ├── app.js                   # Auto-orchestration, streaming, color cycle
+│   ├── styles.css               # Executive dark theme, agent description bar, pill styles
+│   ├── app.js                   # Auto-orchestration, streaming, token pills, HCL grammar
 │   └── charts/                  # Generated chart PNGs (auto-created)
 ├── db/
 │   └── northwind.db             # Northwind SQLite database
@@ -213,18 +232,16 @@ from app.agents import ..., my_agent
 "my_agent": "my_agent_tool",
 ```
 
-### Step 4: Add routing keywords in `app/graph/workflow.py`
+### Step 4: Add routing in `app/graph/workflow.py`
 
-Add a keyword set and routing rule:
+Add your agent to `_VALID_AGENTS` and update the classifier system prompt:
 
 ```python
-_MY_AGENT_KEYWORDS = {
-    "keyword1", "keyword2", "keyword3",
-}
+# Add to the valid-agents set:
+_VALID_AGENTS = {"general", "rag", ..., "my_agent"}
 
-# Inside classify_agents(), before the fallback block:
-if any(kw in q for kw in _MY_AGENT_KEYWORDS):
-    agents.append("my_agent")
+# Update _CLASSIFIER_SYSTEM_PROMPT to include your agent's description
+# so the LLM knows when to route queries to it.
 ```
 
 ### Step 5: Add the UI pill in `static/index.html`
@@ -247,6 +264,12 @@ Add a hint card in the `.hint-grid` div:
 <div class="hint-card"><strong>My Agent</strong><span>Short description</span></div>
 ```
 
+Add a description entry in the `.agent-desc-bar` div:
+
+```html
+<span class="agent-desc-item"><b>My Agent</b> Short description</span>
+```
+
 ### Step 6: Add the CSS pill style in `static/styles.css`
 
 ```css
@@ -265,10 +288,11 @@ Add a hint card in the `.hint-grid` div:
 ### That's it!
 
 After these 6 steps, restart the server. Your new agent will:
-- Be auto-routed when the user's query matches your keywords
+- Be auto-routed when the LLM classifier determines it's relevant
 - Light up its pill in the UI when called
 - Receive conversation history for context
 - Run in parallel with other agents when multiple match
+- Have its token usage tracked and displayed in the response footer
 
 ---
 
@@ -325,8 +349,8 @@ Open **http://localhost:8000** in your browser.
 ### Build & run with Docker
 
 ```bash
-docker build -t maaah .
-docker run -p 8000:8000 --env-file .env -v $(pwd)/data:/app/data maaah
+docker build -t enso .
+docker run -p 8000:8000 --env-file .env -v $(pwd)/data:/app/data enso
 ```
 
 ### Build & run with Docker Compose
@@ -348,30 +372,30 @@ docker-compose up --build
 
 ```bash
 # 1. Create a resource group
-az group create --name rg-maaah --location eastus
+az group create --name rg-enso --location eastus
 
 # 2. Create an Azure Container Registry
-az acr create --resource-group rg-maaah --name maaahregistry --sku Basic
+az acr create --resource-group rg-enso --name ensoregistry --sku Basic
 
 # 3. Log in to ACR
-az acr login --name maaahregistry
+az acr login --name ensoregistry
 
 # 4. Build & push the image
-az acr build --registry maaahregistry --image maaah:latest .
+az acr build --registry ensoregistry --image enso:latest .
 
 # 5. Create a Container Apps Environment
 az containerapp env create \
-  --name maaah-env \
-  --resource-group rg-maaah \
+  --name enso-env \
+  --resource-group rg-enso \
   --location eastus
 
 # 6. Deploy the container app
 az containerapp create \
-  --name maaah-app \
-  --resource-group rg-maaah \
-  --environment maaah-env \
-  --image maaahregistry.azurecr.io/maaah:latest \
-  --registry-server maaahregistry.azurecr.io \
+  --name enso-app \
+  --resource-group rg-enso \
+  --environment enso-env \
+  --image ensoregistry.azurecr.io/enso:latest \
+  --registry-server ensoregistry.azurecr.io \
   --target-port 8000 \
   --ingress external \
   --min-replicas 1 \
@@ -388,12 +412,12 @@ az containerapp create \
     NASA_API_KEY=<your-key> \
     LANGSMITH_API_KEY=<your-key> \
     LANGCHAIN_TRACING_V2=true \
-    LANGCHAIN_PROJECT=maaah
+    LANGCHAIN_PROJECT=enso
 
 # 7. Get the app URL
 az containerapp show \
-  --name maaah-app \
-  --resource-group rg-maaah \
+  --name enso-app \
+  --resource-group rg-enso \
   --query "properties.configuration.ingress.fqdn" \
   -o tsv
 ```
@@ -423,7 +447,7 @@ az containerapp show \
 }
 ```
 
-> **Note:** The `agent` field is optional. When omitted (the default), the workflow auto-routes to the best agent(s) based on query keywords and file type. The `session_id` enables conversation memory across turns.
+> **Note:** The `agent` field is optional. When omitted (the default), the LLM-based classifier auto-routes to the best agent(s) based on query content and conversation history. The `session_id` enables conversation memory across turns.
 
 ---
 
@@ -445,7 +469,7 @@ See `.env` for all configurable values. Authentication uses **`DefaultAzureCrede
 | `NASA_API_KEY` | — | `DEMO_KEY` | NASA API key |
 | `LANGSMITH_API_KEY` | — | — | LangSmith tracing key |
 | `LANGCHAIN_TRACING_V2` | — | `true` | Enable LangSmith tracing |
-| `LANGCHAIN_PROJECT` | — | `maaah` | LangSmith project name |
+| `LANGCHAIN_PROJECT` | — | `enso` | LangSmith project name |
 
 ---
 

@@ -3,9 +3,9 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>MAAAH – Multi Agent App – Atlanta Hub</title>
-  <link rel="stylesheet" href="/static/styles.css" />
+  <title>Ensō – Multi Agent AI Hub</title>
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/styles/github-dark.min.css" />
+  <link rel="stylesheet" href="/static/styles.css?v=20260220g" />
   <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/highlight.min.js"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/marked/12.0.1/marked.min.js"></script>
 </head>
@@ -20,7 +20,7 @@
         <rect x="1" y="12" width="10" height="10" fill="#00a4ef"/>
         <rect x="12" y="12" width="10" height="10" fill="#ffb900"/>
       </svg>
-      <h1 class="header-title">MAAAH &ndash; Multi Agent App &ndash; Atlanta Hub</h1>
+      <h1 class="header-title">Ensō &ndash; Multi Agent AI Hub</h1>
     </div>
   </header>
 
@@ -34,6 +34,20 @@
       </div>
 
       <div class="panel-body">
+        <!-- Agent description bar -->
+        <div class="agent-desc-bar" id="agentDescBar">
+          <span class="agent-desc-item"><b>General</b> Any topic</span>
+          <span class="agent-desc-item"><b>RAG</b> Search docs</span>
+          <span class="agent-desc-item"><b>Multimodal</b> Image + text</span>
+          <span class="agent-desc-item"><b>NASA</b> Space data</span>
+          <span class="agent-desc-item"><b>Weather</b> Forecasts</span>
+          <span class="agent-desc-item"><b>Traffic</b> Routes</span>
+          <span class="agent-desc-item"><b>SQL</b> Database</span>
+          <span class="agent-desc-item"><b>Viz</b> Charts</span>
+          <span class="agent-desc-item"><b>CICP</b> Insurance</span>
+          <span class="agent-desc-item"><b>IDA</b> Interior design</span>
+        </div>
+
         <!-- Agent selector -->
         <div class="agent-strip">
           <button class="agent-pill" data-agent="general" title="General Assistant">
@@ -68,6 +82,14 @@
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="12" width="4" height="9" rx="1"/><rect x="10" y="7" width="4" height="14" rx="1"/><rect x="17" y="3" width="4" height="18" rx="1"/><line x1="2" y1="22" x2="23" y2="22"/></svg>
             Viz
           </button>
+          <button class="agent-pill" data-agent="cicp" title="CICP – Car Insurance Claim Processing">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M19 17h2c.6 0 1-.4 1-1v-3c0-.9-.7-1.7-1.5-1.9C18.7 10.6 16 10 16 10s-1.3-2-2.2-3.5C12.8 5 11.3 4 9.7 4H5.2c-.8 0-1.4.4-1.8.9L2 7.5C1.4 8.3 1 9.1 1 10v6c0 .6.4 1 1 1h1"/><circle cx="7" cy="17" r="2"/><circle cx="17" cy="17" r="2"/><path d="M14 17H9"/></svg>
+            CICP
+          </button>
+          <button class="agent-pill" data-agent="ida" title="IDA – Interior Design Agent">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 9l9-7 9 7v11a2 2 0 01-2 2H5a2 2 0 01-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>
+            IDA
+          </button>
         </div>
 
         <!-- Prompt area -->
@@ -80,6 +102,17 @@
           <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21.44 11.05l-9.19 9.19a6 6 0 01-8.49-8.49l9.19-9.19a4 4 0 015.66 5.66l-9.2 9.19a2 2 0 01-2.83-2.83l8.49-8.48"/></svg>
           <span id="fileChipName"></span>
           <button class="file-chip-remove" id="fileChipRemove" title="Remove file">&times;</button>
+        </div>
+
+        <!-- Sample question pills -->
+        <div class="sample-questions" id="sampleQuestions">
+          <button class="sample-pill" data-question="RAG: What was Microsoft's cloud revenue for 2024 and 2025?">RAG: What was Microsoft's cloud revenue for 2024 and 2025?</button>
+          <button class="sample-pill" data-question="Tell me something about Quantum Computing.">Tell me something about Quantum Computing.</button>
+          <button class="sample-pill" data-question="I want to file car insurance claim.">I want to file car insurance claim.</button>
+          <button class="sample-pill" data-question="What are the total sales broken down by country for top 10 countries? Show in a pie chart.">What are the total sales broken down by country for top 10 countries? Show in a pie chart.</button>
+          <button class="sample-pill" data-question="Analyze the uploaded image and generate Terraform code to deploy all resources in Azure within a single resource group named 'rg_agents' from the uploaded image">Analyze the uploaded image and generate Terraform code to deploy all resources in Azure within a single resource group named 'rg_agents' from the uploaded image</button>
+          <button class="sample-pill" data-question="Suggest a healthy dinner plan at a restaurant today in Atlanta. Include calorie, protein, fat, and carb breakdown for each item. Also let me know the weather condition and what I should wear for dinner. Suggest couple of restaurant names (with website url). I'll be traveling from Alpharetta, let me know the traffic situation as well.">Suggest a healthy dinner plan at a restaurant today in Atlanta. Include calorie, protein, fat, and carb breakdown for each item. Also let me know the weather condition and what I should wear for dinner. Suggest couple of restaurant names (with website url). I'll be traveling from Alpharetta, let me know the traffic situation as well.</button>
+          <button class="sample-pill" data-question="Uploaded a room image. Analyze this room and recommend furniture that would complement the space. Suggest product details accordingly (Please create a table). Mention 'NONE' if no products found for a particular item.">Uploaded a room image. Analyze this room and recommend furniture that would complement the space. Suggest product details accordingly (Please create a table). Mention 'NONE' if no products found for a particular item.</button>
         </div>
 
         <!-- Actions row -->
@@ -117,7 +150,7 @@
         <!-- Welcome state -->
         <div class="welcome-state" id="welcomeState">
           <div class="welcome-glow"></div>
-          <h2>Welcome to <span class="gradient-text">MAAAH</span></h2>
+          <h2>Welcome to <span class="gradient-text">Ensō</span></h2>
           <p>Select an agent, type your prompt, and hit Send.</p>
           <div class="hint-grid">
             <div class="hint-card"><strong>General</strong><span>Any question</span></div>
@@ -128,6 +161,8 @@
             <div class="hint-card"><strong>Traffic</strong><span>Route &amp; traffic info</span></div>
             <div class="hint-card"><strong>SQL</strong><span>Query Northwind DB</span></div>
             <div class="hint-card"><strong>Viz</strong><span>Charts &amp; graphs</span></div>
+            <div class="hint-card"><strong>CICP</strong><span>Car insurance claims</span></div>
+            <div class="hint-card"><strong>IDA</strong><span>Interior design &amp; furniture</span></div>
           </div>
         </div>
 
@@ -143,6 +178,6 @@
     <p>Created By: CHINMOY C | 2026</p>
   </footer>
 
-  <script src="/static/app.js"></script>
+  <script src="/static/app.js?v=20260220h"></script>
 </body>
 </html>

@@ -1,6 +1,6 @@
 """MCP (Model Context Protocol) compatible server.
 
-Exposes each MAAAH agent as an MCP tool so that external orchestrators
+Exposes each Ensō agent as an MCP tool so that external orchestrators
 or the built-in LangGraph workflow can invoke them uniformly.
 
 The server is implemented as a thin wrapper that conforms to the MCP
@@ -14,7 +14,7 @@ from typing import Any, Optional
 
 from langsmith import traceable
 
-from app.agents import rag_agent, multimodal_agent, nasa_agent, general_agent, weather_agent, traffic_agent, sql_agent, viz_agent
+from app.agents import rag_agent, multimodal_agent, nasa_agent, general_agent, weather_agent, traffic_agent, sql_agent, viz_agent, cicp_agent, ida_agent
 
 logger = logging.getLogger(__name__)
 
@@ -148,6 +148,46 @@ TOOL_DEFINITIONS: list[dict[str, Any]] = [
             "required": ["query"],
         },
     },
+    {
+        "name": "cicp_process",
+        "description": (
+            "Car Insurance Claim Processing (CICP) agent. Analyses an uploaded "
+            "claim form and damaged car photo, retrieves applicable insurance "
+            "rules from the cicp vector index, and renders an APPROVE / REJECT "
+            "decision. Requires both a claim form (document) and damage photo "
+            "(image) to be uploaded."
+        ),
+        "parameters": {
+            "type": "object",
+            "properties": {
+                "query": {"type": "string", "description": "The user's insurance claim request."},
+                "file_path": {
+                    "type": "string",
+                    "description": "Path to uploaded file (claim form or damage photo).",
+                },
+            },
+            "required": ["query"],
+        },
+    },
+    {
+        "name": "ida_design",
+        "description": (
+            "Interior Design Agent (IDA). Analyses a room image, suggests "
+            "complementary furniture, and searches the RTG product catalogue "
+            "for matching items with product IDs."
+        ),
+        "parameters": {
+            "type": "object",
+            "properties": {
+                "query": {"type": "string", "description": "The user's interior design question."},
+                "file_path": {
+                    "type": "string",
+                    "description": "Path to the room image to analyse.",
+                },
+            },
+            "required": ["query"],
+        },
+    },
 ]
 
 # Map tool names to agent invoke functions
@@ -160,6 +200,8 @@ _TOOL_HANDLERS = {
     "traffic_route": traffic_agent.invoke,
     "sql_query": sql_agent.invoke,
     "visualize_data": viz_agent.invoke,
+    "cicp_process": cicp_agent.invoke,
+    "ida_design": ida_agent.invoke,
 }
 
 
@@ -210,6 +252,8 @@ AGENT_TO_TOOL: dict[str, str] = {
     "traffic": "traffic_route",
     "sql": "sql_query",
     "viz": "visualize_data",
+    "cicp": "cicp_process",
+    "ida": "ida_design",
 }
 
 
@@ -218,6 +262,7 @@ async def dispatch(
     query: str,
     file_path: Optional[str] = None,
     history: str = "",
+    session_id: str = "default",
 ) -> str:
     """Convenience dispatcher: agent name → MCP tool call → result string."""
     tool_name = AGENT_TO_TOOL.get(agent_name, "general_assistant")
@@ -226,6 +271,8 @@ async def dispatch(
         args["file_path"] = file_path
     if history:
         args["history"] = history
+    if session_id:
+        args["session_id"] = session_id
 
     @traceable(name=f"{agent_name}_agent", run_type="tool", tags=["agent", agent_name])
     async def _traced_call(tool: str, arguments: dict[str, Any]) -> dict[str, Any]:

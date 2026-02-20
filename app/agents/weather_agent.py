@@ -17,6 +17,7 @@ from langchain_openai import AzureChatOpenAI
 from langchain_core.messages import HumanMessage, SystemMessage
 
 from app.config import get_settings
+from app.utils.token_counter import add_tokens
 
 logger = logging.getLogger(__name__)
 
@@ -169,6 +170,7 @@ async def _llm_extract_location(query: str) -> str:
         HumanMessage(content=query),
     ]
     resp = await llm.ainvoke(messages)
+    add_tokens(resp)
     text = resp.content.strip()
     # Strip markdown fences if present
     if text.startswith("```"):
@@ -214,7 +216,7 @@ async def invoke(query: str, *, file_path: Optional[str] = None, **kwargs) -> st
     messages = [
         SystemMessage(
             content=(
-                "You are the Weather Agent inside MAAAH (Multi Agent App – Atlanta Hub). "
+                "You are the Weather Agent inside Ensō (Multi Agent AI Hub). "
                 "The user asked about the weather. Below is the raw weather data retrieved "
                 "from Azure Maps. Present it clearly in Markdown, add a brief natural-language "
                 "summary at the top (e.g. 'It's a warm sunny day…'), and keep the detailed "
@@ -227,4 +229,5 @@ async def invoke(query: str, *, file_path: Optional[str] = None, **kwargs) -> st
     ]
 
     response = await llm.ainvoke(messages)
+    add_tokens(response)
     return response.content

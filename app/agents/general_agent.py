@@ -17,6 +17,7 @@ from langchain_openai import AzureChatOpenAI
 from langchain_core.messages import HumanMessage, SystemMessage
 
 from app.config import get_settings
+from app.utils.token_counter import add_tokens
 
 logger = logging.getLogger(__name__)
 
@@ -76,7 +77,7 @@ async def invoke(query: str, *, file_path: Optional[str] = None, history: str = 
     messages = [
         SystemMessage(
             content=(
-                "You are the General Assistant inside MAAAH (Multi Agent App – Atlanta Hub). "
+                "You are the General Assistant inside Ensō (Multi Agent AI Hub). "
                 "You are helpful, accurate, and concise. Answer the user's question to the best "
                 "of your ability. If you are unsure, say so. Format responses in Markdown when it "
                 "aids readability."
@@ -87,4 +88,5 @@ async def invoke(query: str, *, file_path: Optional[str] = None, history: str = 
     ]
 
     response = await llm.ainvoke(messages)
+    add_tokens(response)
     return response.content
