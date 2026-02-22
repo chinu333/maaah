@@ -18,25 +18,14 @@ from __future__ import annotations
 import logging
 from typing import Optional
 
-from azure.identity import DefaultAzureCredential, get_bearer_token_provider
-from langchain_openai import AzureChatOpenAI, AzureOpenAIEmbeddings
-from langchain_community.vectorstores.azuresearch import AzureSearch
 from langchain.chains import RetrievalQA
 from langchain_core.callbacks import BaseCallbackHandler
 
 from app.config import get_settings
 from app.utils.token_counter import add_tokens
+from app.utils.llm_cache import get_chat_llm, get_vectorstore
 
 logger = logging.getLogger(__name__)
-
-# ---------------------------------------------------------------------------
-# Azure credential singleton
-# ---------------------------------------------------------------------------
-
-_credential = DefaultAzureCredential()
-_token_provider = get_bearer_token_provider(
-    _credential, "https://cognitiveservices.azure.com/.default"
-)
 
 
 # ---------------------------------------------------------------------------
@@ -66,34 +55,11 @@ async def invoke(query: str, *, file_path: Optional[str] = None, **kwargs) -> st
         settings.azure_search_endpoint,
     )
 
-    # 1. Embeddings model (for query vectorisation)
-    embeddings = AzureOpenAIEmbeddings(
-        azure_deployment=settings.azure_openai_embedding_deployment,
-        azure_endpoint=settings.azure_openai_endpoint,
-        api_version=settings.azure_openai_api_version,
-        azure_ad_token_provider=_token_provider,
-    )
+    # 1. Connect to the *existing* Azure AI Search index via cached vectorstore
+    vectorstore = get_vectorstore(settings.azure_search_index_name)
 
-    # 2. Connect to the *existing* Azure AI Search index (read-only)
-    vectorstore = AzureSearch(
-        azure_search_endpoint=settings.azure_search_endpoint,
-        azure_search_key=None,   # RBAC – no key needed
-        index_name=settings.azure_search_index_name,
-        embedding_function=embeddings.embed_query,
-        credential=_credential,
-        search_type="hybrid",
-    )
-
-    # 3. Build a RetrievalQA chain — retrieves top-k then asks the LLM
-    llm = AzureChatOpenAI(
-        azure_deployment=settings.azure_openai_chat_deployment,
-        azure_endpoint=settings.azure_openai_endpoint,
-        api_version=settings.azure_openai_api_version,
-        azure_ad_token_provider=_token_provider,
-        temperature=0.2,
-        request_timeout=settings.request_timeout,
-    )
-    llm.name = "rag-agent-llm"
+    # 2. Build a RetrievalQA chain — retrieves top-k then asks the LLM
+    llm = get_chat_llm(temperature=0.2, name="rag-agent-llm")
 
     qa_chain = RetrievalQA.from_chain_type(
         llm=llm,

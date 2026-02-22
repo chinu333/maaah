@@ -20,24 +20,14 @@ import mimetypes
 from pathlib import Path
 from typing import Optional
 
-from azure.identity import DefaultAzureCredential, get_bearer_token_provider
-from langchain_openai import AzureChatOpenAI, AzureOpenAIEmbeddings
-from langchain_community.vectorstores.azuresearch import AzureSearch
 from langchain_core.messages import HumanMessage, SystemMessage
 from langsmith import traceable
 
 from app.config import get_settings
 from app.utils.token_counter import add_tokens
+from app.utils.llm_cache import get_chat_llm, get_vectorstore
 
 logger = logging.getLogger(__name__)
-
-# ---------------------------------------------------------------------------
-# Azure credential singleton
-# ---------------------------------------------------------------------------
-_credential = DefaultAzureCredential()
-_token_provider = get_bearer_token_provider(
-    _credential, "https://cognitiveservices.azure.com/.default"
-)
 
 # ---------------------------------------------------------------------------
 # Constants
@@ -105,16 +95,7 @@ def _read_document(file_path: str) -> str:
 @traceable(name="cicp_extract_claim", run_type="chain", tags=["cicp"])
 async def _extract_claim_details(file_path: str) -> str:
     """Use the LLM to extract structured claim details from a document or scanned image."""
-    settings = get_settings()
-    llm = AzureChatOpenAI(
-        azure_deployment=settings.azure_openai_chat_deployment,
-        azure_endpoint=settings.azure_openai_endpoint,
-        api_version=settings.azure_openai_api_version,
-        azure_ad_token_provider=_token_provider,
-        temperature=0.0,
-        request_timeout=settings.request_timeout,
-    )
-    llm.name = "cicp-claim-extractor"
+    llm = get_chat_llm(temperature=0.0, name="cicp-claim-extractor")
 
     ext = Path(file_path).suffix.lower()
     is_image_form = ext in _IMAGE_EXTS
@@ -167,16 +148,7 @@ If a field is not present in the form, write "Not provided".
 @traceable(name="cicp_damage_assessment", run_type="chain", tags=["cicp"])
 async def _assess_damage(image_path: str) -> str:
     """Use Azure OpenAI vision to assess car damage from a photo."""
-    settings = get_settings()
-    llm = AzureChatOpenAI(
-        azure_deployment=settings.azure_openai_chat_deployment,
-        azure_endpoint=settings.azure_openai_endpoint,
-        api_version=settings.azure_openai_api_version,
-        azure_ad_token_provider=_token_provider,
-        temperature=0.2,
-        request_timeout=settings.request_timeout,
-    )
-    llm.name = "cicp-damage-assessor"
+    llm = get_chat_llm(temperature=0.2, name="cicp-damage-assessor")
 
     b64, mime = _encode_image(image_path)
     logger.info("CICP: Analysing damage image %s (%s)", image_path, mime)
@@ -220,16 +192,7 @@ async def _assess_damage(image_path: str) -> str:
 @traceable(name="cicp_police_report", run_type="chain", tags=["cicp"])
 async def _extract_police_report(file_path: str) -> str:
     """Use the LLM to extract key details from a police/incident report."""
-    settings = get_settings()
-    llm = AzureChatOpenAI(
-        azure_deployment=settings.azure_openai_chat_deployment,
-        azure_endpoint=settings.azure_openai_endpoint,
-        api_version=settings.azure_openai_api_version,
-        azure_ad_token_provider=_token_provider,
-        temperature=0.0,
-        request_timeout=settings.request_timeout,
-    )
-    llm.name = "cicp-police-report-extractor"
+    llm = get_chat_llm(temperature=0.0, name="cicp-police-report-extractor")
 
     ext = Path(file_path).suffix.lower()
     is_image_report = ext in _IMAGE_EXTS
@@ -280,23 +243,8 @@ If a field is not present in the report, write "Not provided".
 @traceable(name="cicp_rules_lookup", run_type="chain", tags=["cicp"])
 async def _lookup_rules(claim_summary: str, damage_summary: str) -> str:
     """Search the 'cicp' Azure AI Search index for applicable rules."""
-    settings = get_settings()
 
-    embeddings = AzureOpenAIEmbeddings(
-        azure_deployment=settings.azure_openai_embedding_deployment,
-        azure_endpoint=settings.azure_openai_endpoint,
-        api_version=settings.azure_openai_api_version,
-        azure_ad_token_provider=_token_provider,
-    )
-
-    vectorstore = AzureSearch(
-        azure_search_endpoint=settings.azure_search_endpoint,
-        azure_search_key=None,  # RBAC – no key needed
-        index_name=_CICP_INDEX_NAME,  # Hard-coded cicp index
-        embedding_function=embeddings.embed_query,
-        credential=_credential,
-        search_type="hybrid",
-    )
+    vectorstore = get_vectorstore(_CICP_INDEX_NAME)
 
     # Build a focused search query combining claim + damage info
     search_query = (
@@ -333,16 +281,7 @@ async def _make_decision(
     original_query: str,
 ) -> str:
     """Synthesise everything and render a final APPROVE / REJECT decision."""
-    settings = get_settings()
-    llm = AzureChatOpenAI(
-        azure_deployment=settings.azure_openai_chat_deployment,
-        azure_endpoint=settings.azure_openai_endpoint,
-        api_version=settings.azure_openai_api_version,
-        azure_ad_token_provider=_token_provider,
-        temperature=0.1,
-        request_timeout=settings.request_timeout,
-    )
-    llm.name = "cicp-decision-maker"
+    llm = get_chat_llm(temperature=0.1, name="cicp-decision-maker")
 
     police_instruction = ""
     if police_report:

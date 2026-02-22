@@ -12,36 +12,21 @@ import logging
 from pathlib import Path
 from typing import Optional
 
-from azure.identity import DefaultAzureCredential, get_bearer_token_provider
-from langchain_openai import AzureChatOpenAI
 from langchain_core.messages import HumanMessage, SystemMessage
 
 from app.config import get_settings
 from app.utils.token_counter import add_tokens
+from app.utils.llm_cache import get_chat_llm
 
 logger = logging.getLogger(__name__)
-
-_credential = DefaultAzureCredential()
-_token_provider = get_bearer_token_provider(
-    _credential, "https://cognitiveservices.azure.com/.default"
-)
 
 _TEXT_EXTS = {".txt", ".md", ".csv", ".json", ".py", ".js", ".html", ".css", ".xml", ".yaml", ".yml", ".log"}
 
 
 async def invoke(query: str, *, file_path: Optional[str] = None, history: str = "", **kwargs) -> str:
     """Send the user's query to Azure OpenAI and return the response."""
-    settings = get_settings()
 
-    llm = AzureChatOpenAI(
-        azure_deployment=settings.azure_openai_chat_deployment,
-        azure_endpoint=settings.azure_openai_endpoint,
-        api_version=settings.azure_openai_api_version,
-        azure_ad_token_provider=_token_provider,
-        temperature=0.7,
-        request_timeout=settings.request_timeout,
-    )
-    llm.name = "general-agent-llm"
+    llm = get_chat_llm(temperature=0.7, name="general-agent-llm")
 
     # Build optional file context
     file_context = ""

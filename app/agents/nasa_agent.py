@@ -18,17 +18,11 @@ from typing import Optional
 
 import nasapy
 import requests
-from azure.identity import DefaultAzureCredential, get_bearer_token_provider
-from langchain_openai import AzureChatOpenAI
 from langchain_core.messages import HumanMessage, SystemMessage
 
 from app.config import get_settings
 from app.utils.token_counter import add_tokens
-
-_credential = DefaultAzureCredential()
-_token_provider = get_bearer_token_provider(
-    _credential, "https://cognitiveservices.azure.com/.default"
-)
+from app.utils.llm_cache import get_chat_llm
 
 logger = logging.getLogger(__name__)
 
@@ -149,19 +143,10 @@ def _fetch_nasa_data(query: str) -> str:
 
 async def invoke(query: str, *, file_path: Optional[str] = None, **kwargs) -> str:
     """Fetch NASA data via nasapy and let the LLM compose a user-friendly answer."""
-    settings = get_settings()
 
     nasa_data = _fetch_nasa_data(query)
 
-    llm = AzureChatOpenAI(
-        azure_deployment=settings.azure_openai_chat_deployment,
-        azure_endpoint=settings.azure_openai_endpoint,
-        api_version=settings.azure_openai_api_version,
-        azure_ad_token_provider=_token_provider,
-        temperature=0.4,
-        request_timeout=settings.request_timeout,
-    )
-    llm.name = "nasa-agent-llm"
+    llm = get_chat_llm(temperature=0.4, name="nasa-agent-llm")
 
     messages = [
         SystemMessage(

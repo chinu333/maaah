@@ -254,6 +254,16 @@ button { font-family: inherit; }
   box-shadow: 0 0 14px rgba(227,179,65,.18);
 }
 .agent-pill.called[data-agent="ida"] svg { opacity:1; stroke: var(--orange); }
+.agent-pill.called[data-agent="fhir"] {
+  background: rgba(125,207,255,.10); border-color: var(--cyan); color: var(--cyan);
+  box-shadow: 0 0 14px rgba(125,207,255,.18);
+}
+.agent-pill.called[data-agent="fhir"] svg { opacity:1; stroke: var(--cyan); }
+.agent-pill.called[data-agent="banking"] {
+  background: rgba(76,175,80,.10); border-color: #4caf50; color: #4caf50;
+  box-shadow: 0 0 14px rgba(76,175,80,.18);
+}
+.agent-pill.called[data-agent="banking"] svg { opacity:1; stroke: #4caf50; }
 
 /* Prompt textarea */
 .prompt-zone {
@@ -321,6 +331,84 @@ button { font-family: inherit; }
   color: var(--text-secondary);
   font-weight: 400;
   font-size: .68rem;
+}
+
+/* ── Evaluation Scorecard ────────────────────────────────────── */
+.eval-scorecard {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 20px 12px;
+  border-top: 1px solid var(--border);
+  flex-wrap: wrap;
+}
+.eval-scorecard-label {
+  font-size: .70rem;
+  font-weight: 600;
+  color: var(--text-secondary);
+  text-transform: uppercase;
+  letter-spacing: .06em;
+  margin-right: 2px;
+}
+.eval-metric {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 4px 10px;
+  border-radius: 12px;
+  font-size: .72rem;
+  font-weight: 500;
+  background: var(--bg-surface);
+  border: 1px solid var(--border);
+  transition: var(--transition);
+}
+.eval-metric-name {
+  color: var(--text-secondary);
+  font-weight: 400;
+}
+.eval-metric-score {
+  font-weight: 700;
+  min-width: 26px;
+  text-align: center;
+}
+.eval-metric.pass { border-color: rgba(63,185,80,.35); background: rgba(63,185,80,.08); }
+.eval-metric.pass .eval-metric-score { color: var(--green); }
+.eval-metric.fail { border-color: rgba(248,81,73,.35); background: rgba(248,81,73,.08); }
+.eval-metric.fail .eval-metric-score { color: var(--red); }
+.eval-metric.error { border-color: rgba(227,179,65,.35); background: rgba(227,179,65,.08); }
+.eval-metric.error .eval-metric-score { color: var(--orange); }
+
+/* Overall score badge */
+.eval-overall {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 4px 12px;
+  border-radius: 12px;
+  font-size: .74rem;
+  font-weight: 700;
+  margin-left: auto;
+}
+.eval-overall.pass {
+  background: rgba(63,185,80,.12);
+  color: var(--green);
+  border: 1px solid rgba(63,185,80,.30);
+}
+.eval-overall.needs_review {
+  background: rgba(227,179,65,.12);
+  color: var(--orange);
+  border: 1px solid rgba(227,179,65,.30);
+}
+.eval-overall.fail {
+  background: rgba(248,81,73,.12);
+  color: var(--red);
+  border: 1px solid rgba(248,81,73,.30);
+}
+
+/* Tooltip on hover for evaluation reasoning */
+.eval-metric[title]:hover {
+  border-color: var(--accent);
+  box-shadow: 0 0 8px rgba(88,166,255,.12);
 }
 
 /* Sample question pills */
@@ -573,12 +661,58 @@ button { font-family: inherit; }
 .rc-agent-badge[data-agent="rag"]     { background: rgba(63,185,80,.12); color: var(--green); }
 .rc-agent-badge[data-agent="multimodal"] { background: rgba(188,140,255,.12); color: var(--purple); }
 .rc-agent-badge[data-agent="nasa"]    { background: rgba(227,179,65,.12); color: var(--orange); }
+.rc-agent-badge[data-agent="banking"] { background: rgba(76,175,80,.12); color: #4caf50; }
 
 /* Card body – response text */
 .rc-body {
   padding: 16px 20px 18px;
   font-size: 1.05rem; line-height: 1.75;
   color: #b0bec5;
+}
+
+/* ── Tables inside response cards ─────────────────────────────── */
+.rc-body table {
+  width: 100%;
+  border-collapse: separate;
+  border-spacing: 0;
+  margin: 12px 0 16px;
+  font-size: .92rem;
+  line-height: 1.5;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  overflow: hidden;
+}
+.rc-body thead th {
+  background: var(--bg-elevated);
+  color: var(--text-primary);
+  font-weight: 700;
+  font-size: .78rem;
+  text-transform: uppercase;
+  letter-spacing: .5px;
+  padding: 10px 14px;
+  border-bottom: 2px solid var(--accent);
+  text-align: left;
+  white-space: nowrap;
+}
+.rc-body tbody td {
+  padding: 9px 14px;
+  border-bottom: 1px solid var(--border);
+  color: #b0bec5;
+  vertical-align: top;
+}
+.rc-body tbody tr:last-child td {
+  border-bottom: none;
+}
+.rc-body tbody tr:nth-child(even) {
+  background: rgba(255,255,255,.02);
+}
+.rc-body tbody tr:hover {
+  background: rgba(88,166,255,.06);
+}
+/* Right-align numeric / currency columns (any cell starting with $ or digit) */
+.rc-body tbody td:empty {
+  /* collapse empty cells cleanly */
+  padding: 4px 14px;
 }
 
 /* ── Streaming cursor ─────────────────────────────────────────── */

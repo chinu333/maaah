@@ -21,6 +21,8 @@ class AgentName(str, Enum):
     VIZ = "viz"
     CICP = "cicp"
     IDA = "ida"
+    FHIR = "fhir"
+    BANKING = "banking"
     GENERAL = "general"
 
 

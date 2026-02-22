@@ -319,6 +319,10 @@
       const tokenUsage = (data.metadata && data.metadata.token_usage) || {};
       updateTokenCostPills(card, tokenUsage);
 
+      // Add evaluation scorecard
+      const evalScores = (data.metadata && data.metadata.evaluation_scores) || {};
+      updateEvaluationScorecard(card, evalScores);
+
       // Clear loading, do streaming render
       bodyEl.innerHTML = "";
       await streamRender(bodyEl, data.reply);
@@ -416,6 +420,54 @@
 
     stats.appendChild(tokenPill);
     stats.appendChild(costPill);
+  }
+
+  // ================================================================
+  // EVALUATION SCORECARD
+  // ================================================================
+  function updateEvaluationScorecard(card, evalScores) {
+    if (!evalScores || !evalScores.scores || evalScores.scores.length === 0) return;
+
+    const scorecard = document.createElement("div");
+    scorecard.className = "eval-scorecard";
+
+    // Label
+    const label = document.createElement("span");
+    label.className = "eval-scorecard-label";
+    label.textContent = "Quality";
+    scorecard.appendChild(label);
+
+    // Individual metric pills
+    evalScores.scores.forEach(function (s) {
+      const pill = document.createElement("span");
+      const result = (s.result || "error").toLowerCase();
+      pill.className = "eval-metric " + result;
+      if (s.reason) pill.title = s.reason;
+
+      const name = document.createElement("span");
+      name.className = "eval-metric-name";
+      name.textContent = capitalize(s.metric);
+
+      const score = document.createElement("span");
+      score.className = "eval-metric-score";
+      score.textContent = s.score != null ? s.score.toFixed(1) : "–";
+
+      pill.appendChild(name);
+      pill.appendChild(score);
+      scorecard.appendChild(pill);
+    });
+
+    // Overall badge (pushed to right via margin-left:auto in CSS)
+    if (evalScores.overall_score != null) {
+      const overall = document.createElement("span");
+      const overallResult = (evalScores.overall_result || "needs_review").toLowerCase();
+      overall.className = "eval-overall " + overallResult;
+      overall.textContent = "Overall " + evalScores.overall_score.toFixed(1)
+        + "/" + (evalScores.overall_max || 5);
+      scorecard.appendChild(overall);
+    }
+
+    card.appendChild(scorecard);
   }
 
   // ================================================================

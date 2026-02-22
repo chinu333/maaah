@@ -14,19 +14,13 @@ import mimetypes
 from pathlib import Path
 from typing import Optional
 
-from azure.identity import DefaultAzureCredential, get_bearer_token_provider
-from langchain_openai import AzureChatOpenAI
 from langchain_core.messages import HumanMessage, SystemMessage
 
 from app.config import get_settings
 from app.utils.token_counter import add_tokens
+from app.utils.llm_cache import get_chat_llm
 
 logger = logging.getLogger(__name__)
-
-_credential = DefaultAzureCredential()
-_token_provider = get_bearer_token_provider(
-    _credential, "https://cognitiveservices.azure.com/.default"
-)
 
 
 def _encode_image(image_path: str) -> tuple[str, str]:
@@ -48,15 +42,7 @@ async def invoke(query: str, *, file_path: Optional[str] = None, **kwargs) -> st
     settings = get_settings()
     history = kwargs.get("history", "")
 
-    llm = AzureChatOpenAI(
-        azure_deployment=settings.azure_openai_chat_deployment,
-        azure_endpoint=settings.azure_openai_endpoint,
-        api_version=settings.azure_openai_api_version,
-        azure_ad_token_provider=_token_provider,
-        temperature=0.3,
-        request_timeout=settings.request_timeout,
-    )
-    llm.name = "multimodal-agent-llm"
+    llm = get_chat_llm(temperature=0.3, name="multimodal-agent-llm")
 
     # Build system message with conversation history for follow-ups
     system_parts = ["You are a helpful multimodal assistant that can analyse images and answer questions."]

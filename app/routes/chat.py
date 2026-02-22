@@ -27,12 +27,16 @@ async def chat(req: ChatRequest):
         )
         agents_called = result["agents_called"]
         token_usage = result.get("token_usage", {})
+        evaluation_scores = result.get("evaluation_scores", {})
         return ChatResponse(
             reply=result["response"],
             agent=agents_called[0] if agents_called else "general",
             agents_called=agents_called,
             session_id=req.session_id,
-            metadata={"token_usage": token_usage},
+            metadata={
+                "token_usage": token_usage,
+                "evaluation_scores": evaluation_scores,
+            },
         )
     except Exception as exc:
         logger.exception("Chat endpoint error")

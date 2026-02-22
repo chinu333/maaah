@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Ensō – Multi Agent AI Hub</title>
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/styles/github-dark.min.css" />
-  <link rel="stylesheet" href="/static/styles.css?v=20260220g" />
+  <link rel="stylesheet" href="/static/styles.css?v=20260221b" />
   <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/highlight.min.js"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/marked/12.0.1/marked.min.js"></script>
 </head>
@@ -46,6 +46,8 @@
           <span class="agent-desc-item"><b>Viz</b> Charts</span>
           <span class="agent-desc-item"><b>CICP</b> Insurance</span>
           <span class="agent-desc-item"><b>IDA</b> Interior design</span>
+          <span class="agent-desc-item"><b>FHIR</b> Healthcare data</span>
+          <span class="agent-desc-item"><b>Banking</b> Customer service</span>
         </div>
 
         <!-- Agent selector -->
@@ -90,6 +92,14 @@
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 9l9-7 9 7v11a2 2 0 01-2 2H5a2 2 0 01-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>
             IDA
           </button>
+          <button class="agent-pill" data-agent="fhir" title="FHIR – Healthcare Data Conversion">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 12h-4l-3 9L9 3l-3 9H2"/></svg>
+            FHIR
+          </button>
+          <button class="agent-pill" data-agent="banking" title="Banking – Customer Service">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 21h18"/><path d="M3 10h18"/><path d="M12 3l9 7H3l9-7z"/><path d="M5 10v11"/><path d="M19 10v11"/><path d="M9 14v4"/><path d="M15 14v4"/></svg>
+            Banking
+          </button>
         </div>
 
         <!-- Prompt area -->
@@ -113,6 +123,8 @@
           <button class="sample-pill" data-question="Analyze the uploaded image and generate Terraform code to deploy all resources in Azure within a single resource group named 'rg_agents' from the uploaded image">Analyze the uploaded image and generate Terraform code to deploy all resources in Azure within a single resource group named 'rg_agents' from the uploaded image</button>
           <button class="sample-pill" data-question="Suggest a healthy dinner plan at a restaurant today in Atlanta. Include calorie, protein, fat, and carb breakdown for each item. Also let me know the weather condition and what I should wear for dinner. Suggest couple of restaurant names (with website url). I'll be traveling from Alpharetta, let me know the traffic situation as well.">Suggest a healthy dinner plan at a restaurant today in Atlanta. Include calorie, protein, fat, and carb breakdown for each item. Also let me know the weather condition and what I should wear for dinner. Suggest couple of restaurant names (with website url). I'll be traveling from Alpharetta, let me know the traffic situation as well.</button>
           <button class="sample-pill" data-question="Uploaded a room image. Analyze this room and recommend furniture that would complement the space. Suggest product details accordingly (Please create a table). Mention 'NONE' if no products found for a particular item.">Uploaded a room image. Analyze this room and recommend furniture that would complement the space. Suggest product details accordingly (Please create a table). Mention 'NONE' if no products found for a particular item.</button>
+          <button class="sample-pill" data-question="Convert this patient data to a FHIR R4 transaction Bundle: Name: Jane Doe, DOB: 1985-03-15, Female, MRN: MRN-98765. Diagnoses: Type 2 Diabetes (E11.9) and Hypertension (I10). Latest labs: HbA1c 7.2% (2026-01-10), Blood Pressure 118/78 mmHg (2026-02-01). Medications: Metformin 1000mg daily, Lisinopril 10mg daily.">Convert this patient data to a FHIR R4 transaction Bundle: Jane Doe, DOB: 1985-03-15, Female. Diagnoses: Type 2 Diabetes, Hypertension. Labs: HbA1c 7.2%, BP 138/88. Meds: Metformin, Lisinopril.</button>
+          <button class="sample-pill" data-question="Show the top 5 customers by total account balance with their account types. Also check if any of them have open fraud alerts or pending support tickets. Finally, what is the bank's overdraft policy and fee schedule?">Show top 5 customers by balance, check for fraud alerts &amp; support tickets, and explain the bank's overdraft policy &amp; fees.</button>
         </div>
 
         <!-- Actions row -->
@@ -163,6 +175,8 @@
             <div class="hint-card"><strong>Viz</strong><span>Charts &amp; graphs</span></div>
             <div class="hint-card"><strong>CICP</strong><span>Car insurance claims</span></div>
             <div class="hint-card"><strong>IDA</strong><span>Interior design &amp; furniture</span></div>
+            <div class="hint-card"><strong>FHIR</strong><span>Healthcare data conversion</span></div>
+            <div class="hint-card"><strong>Banking</strong><span>Accounts, loans &amp; policies</span></div>
           </div>
         </div>
 
@@ -178,6 +192,6 @@
     <p>Created By: CHINMOY C | 2026</p>
   </footer>
 
-  <script src="/static/app.js?v=20260220h"></script>
+  <script src="/static/app.js?v=20260221b"></script>
 </body>
 </html>

@@ -18,8 +18,6 @@ import re
 from pathlib import Path
 from typing import Annotated, Any, Optional, TypedDict
 
-from azure.identity import DefaultAzureCredential, get_bearer_token_provider
-from langchain_openai import AzureChatOpenAI
 from langchain_core.messages import HumanMessage, SystemMessage
 from langsmith import traceable
 from langgraph.graph import StateGraph, END
@@ -28,16 +26,10 @@ from langgraph.checkpoint.memory import MemorySaver
 from app.config import get_settings
 from app.mcp.server import dispatch
 from app.utils.token_counter import add_tokens, reset_counter, get_totals
+from app.utils.llm_cache import get_chat_llm
+from app.agents.evaluator_agent import evaluate_response
 
 logger = logging.getLogger(__name__)
-
-# ---------------------------------------------------------------------------
-# Azure OpenAI credential (shared, module-level)
-# ---------------------------------------------------------------------------
-_credential = DefaultAzureCredential()
-_token_provider = get_bearer_token_provider(
-    _credential, "https://cognitiveservices.azure.com/.default"
-)
 
 # ---------------------------------------------------------------------------
 # Classification constants
@@ -46,7 +38,7 @@ _token_provider = get_bearer_token_provider(
 _IMAGE_EXTS = {".png", ".jpg", ".jpeg", ".gif", ".webp", ".bmp"}
 _DOC_EXTS = {".txt", ".md", ".pdf", ".csv", ".json", ".docx", ".xlsx"}
 
-_VALID_AGENTS = {"general", "rag", "multimodal", "nasa", "weather", "traffic", "sql", "viz", "cicp", "ida"}
+_VALID_AGENTS = {"general", "rag", "multimodal", "nasa", "weather", "traffic", "sql", "viz", "cicp", "ida", "fhir", "banking"}
 
 # ---------------------------------------------------------------------------
 # LLM-based classifier prompt
@@ -67,6 +59,8 @@ Available agents and their capabilities:
 - **viz**: Creates charts, graphs, and visualizations (bar, pie, line, scatter, histogram, etc.) — typically from database data. If data needs to be queried first, also include "sql".
 - **cicp**: Car Insurance Claim Processing — handles insurance claim submissions. Analyses uploaded claim forms, assesses damaged car photos, applies insurance policy rules, and renders APPROVE/REJECT decisions. Route here when the user mentions insurance claims, car damage claims, claim processing, or uploading claim forms / damage photos.
 - **ida**: Interior Design Agent — analyses a room image, suggests furniture that complements the space (style, colour, layout), and searches the RTG product catalogue for matching items. Route here when the user mentions interior design, room design, furniture suggestions, room makeover, decorating a room, or home styling. Requires an attached room image.
+- **fhir**: FHIR Data Conversion Agent — converts healthcare data into FHIR R4 JSON resources. Handles CSV-to-FHIR, HL7v2-to-FHIR, CDA-to-FHIR, free-text clinical notes to FHIR, resource generation from descriptions, Bundle assembly, and terminology mapping (SNOMED CT, LOINC, ICD-10, RxNorm). Route here when the user mentions FHIR, HL7, healthcare data conversion, clinical data mapping, patient resources, observations, conditions, medication requests, FHIR bundles, interoperability, EHR data, or medical coding systems.
+- **banking**: Banking Customer Service Agent — answers questions about bank customers, accounts, balances, transactions, loans, cards, fraud alerts, support tickets, branches, and bank policies (fee schedules, interest rates, overdraft rules, wire transfer rules, card policies, regulatory compliance). Route here when the user mentions bank account, balance, transaction history, loan status, credit card, debit card, fraud alert, support ticket, branch, bank fee, overdraft, wire transfer, interest rate, bank policy, or any retail/consumer banking topic.
 
 Rules:
 1. Return ONLY a JSON array of agent name strings, e.g. ["sql", "viz", "weather"].
@@ -77,8 +71,10 @@ Rules:
 6. Do NOT include "multimodal" unless an image file is explicitly attached AND the query is NOT about insurance claims.
 7. For insurance claim processing, use "cicp" — do NOT use "multimodal" or "rag" separately for claim-related queries.
 8. For interior design / room design / furniture suggestions with a room image, use "ida" — do NOT use "multimodal" separately.
-9. **Follow-up questions**: If conversation context is provided, check which agent handled the previous turn. If the current query is a follow-up (e.g. "what is the property id?", "show me more details", "what about X?"), route to the SAME agent that answered the prior turn — do NOT default to "general".
-10. Return valid JSON only — no explanations, no markdown, no extra text.
+9. For FHIR or healthcare data conversion queries, use "fhir" — do NOT use "general" or "rag" for FHIR-specific questions.
+10. For banking questions (accounts, transactions, loans, cards, fraud, fees, interest rates, bank policies, overdraft, wire transfers, support tickets, branches), use "banking" — do NOT use "sql" or "rag" for banking-specific questions.
+11. **Follow-up questions**: If conversation context is provided, check which agent handled the previous turn. If the current query is a follow-up (e.g. "what is the property id?", "show me more details", "what about X?"), route to the SAME agent that answered the prior turn — do NOT default to "general".
+12. Return valid JSON only — no explanations, no markdown, no extra text.
 """
 
 
@@ -149,17 +145,9 @@ async def _llm_classify(
 
     Recent conversation history is included so the classifier can understand
     follow-up questions and route them to the agent that handled the prior turn.
+    Uses a cached LLM singleton for HTTP connection reuse.
     """
-    settings = get_settings()
-    llm = AzureChatOpenAI(
-        azure_deployment=settings.azure_openai_chat_deployment,
-        azure_endpoint=settings.azure_openai_endpoint,
-        api_version=settings.azure_openai_api_version,
-        azure_ad_token_provider=_token_provider,
-        temperature=0.0,
-        max_tokens=150,
-    )
-    llm.name = "enso-classifier"
+    llm = get_chat_llm(temperature=0.0, max_tokens=50, name="enso-classifier")
 
     # Build conversation context for the classifier (last 6 messages = 3 turns)
     history_block = ""
@@ -229,7 +217,13 @@ def _keyword_fallback(q: str) -> list[str]:
     if any(kw in q for kw in _VIZ_KW):     agents.append("viz")
     if any(kw in q for kw in _RAG_KW):     agents.append("rag")
     if any(kw in q for kw in _CICP_KW):    agents.append("cicp")
+    _BANKING_KW = {"bank account", "bank balance", "bank transaction", "bank fee",
+                   "overdraft", "wire transfer", "bank policy", "loan status",
+                   "credit card balance", "debit card", "fraud alert", "support ticket",
+                   "banking", "bank branch", "interest rate on", "monthly payment",
+                   "bank customer", "account balance", "card reward"}
     if any(kw in q for kw in _IDA_KW):     agents.append("ida")
+    if any(kw in q for kw in _BANKING_KW): agents.append("banking")
 
     if not agents:
         agents.append("general")
@@ -393,8 +387,19 @@ async def run_workflow(
     if result.get("error"):
         raise RuntimeError(result["error"])
 
+    # ── Inline auto-evaluation ──────────────────────────────────
+    evaluation_scores = {}
+    try:
+        evaluation_scores = await evaluate_response(
+            query=query,
+            response=result["response"],
+        )
+    except Exception as exc:
+        logger.warning("Inline evaluation failed (non-blocking): %s", exc)
+
     return {
         "response": result["response"],
         "agents_called": result["agents_called"],
         "token_usage": get_totals(),
+        "evaluation_scores": evaluation_scores,
     }

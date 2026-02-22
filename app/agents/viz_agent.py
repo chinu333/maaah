@@ -18,20 +18,15 @@ from pathlib import Path
 from typing import Optional
 
 import pandas as pd
-from azure.identity import DefaultAzureCredential, get_bearer_token_provider
 from langchain_openai import AzureChatOpenAI
 from langchain_core.messages import HumanMessage, SystemMessage
 from langchain_community.utilities import SQLDatabase
 
 from app.config import get_settings
 from app.utils.token_counter import add_tokens
+from app.utils.llm_cache import get_chat_llm
 
 logger = logging.getLogger(__name__)
-
-_credential = DefaultAzureCredential()
-_token_provider = get_bearer_token_provider(
-    _credential, "https://cognitiveservices.azure.com/.default"
-)
 
 # ---------------------------------------------------------------------------
 # Chart output directory (served at /static/charts/)
@@ -56,17 +51,7 @@ _SCHEMA_HINT = _db.get_table_info()
 
 
 def _build_llm() -> AzureChatOpenAI:
-    settings = get_settings()
-    llm = AzureChatOpenAI(
-        azure_deployment=settings.azure_openai_chat_deployment,
-        azure_endpoint=settings.azure_openai_endpoint,
-        api_version=settings.azure_openai_api_version,
-        azure_ad_token_provider=_token_provider,
-        temperature=0,
-        request_timeout=settings.request_timeout,
-    )
-    llm.name = "viz-agent-llm"
-    return llm
+    return get_chat_llm(temperature=0.0, name="viz-agent-llm")
 
 
 # ---------------------------------------------------------------------------

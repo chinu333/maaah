@@ -20,25 +20,18 @@ import logging
 from pathlib import Path
 from typing import Optional
 
-from azure.identity import DefaultAzureCredential, get_bearer_token_provider
-from langchain_openai import AzureChatOpenAI, AzureOpenAIEmbeddings
-from langchain_community.vectorstores.azuresearch import AzureSearch
+from langchain_openai import AzureChatOpenAI
 from langchain_core.messages import HumanMessage, SystemMessage
 
 from app.config import get_settings
 from app.utils.token_counter import add_tokens
+from app.utils.llm_cache import get_chat_llm, get_vectorstore
 from app.agents import multimodal_agent
 
 logger = logging.getLogger(__name__)
 
 # Hard-coded index for RTG product catalogue
 _RTG_INDEX_NAME = "rtg-products"
-
-# Azure credential singleton
-_credential = DefaultAzureCredential()
-_token_provider = get_bearer_token_provider(
-    _credential, "https://cognitiveservices.azure.com/.default"
-)
 
 _IMAGE_EXTS = {".png", ".jpg", ".jpeg", ".gif", ".webp", ".bmp"}
 
@@ -49,18 +42,8 @@ _IMAGE_EXTS = {".png", ".jpg", ".jpeg", ".gif", ".webp", ".bmp"}
 
 
 def _get_llm(temperature: float = 0.3) -> AzureChatOpenAI:
-    """Return a reusable Azure OpenAI Chat LLM instance."""
-    settings = get_settings()
-    llm = AzureChatOpenAI(
-        azure_deployment=settings.azure_openai_chat_deployment,
-        azure_endpoint=settings.azure_openai_endpoint,
-        api_version=settings.azure_openai_api_version,
-        azure_ad_token_provider=_token_provider,
-        temperature=temperature,
-        request_timeout=settings.request_timeout,
-    )
-    llm.name = "ida-agent-llm"
-    return llm
+    """Return a cached Azure OpenAI Chat LLM instance."""
+    return get_chat_llm(temperature=temperature, name="ida-agent-llm")
 
 
 # ---------------------------------------------------------------------------
@@ -131,23 +114,7 @@ async def _search_products(suggestions_text: str) -> str:
     Parses the "## Search Queries" section from the advisor output and runs
     one hybrid search per query line, collecting product IDs and titles.
     """
-    settings = get_settings()
-
-    embeddings = AzureOpenAIEmbeddings(
-        azure_deployment=settings.azure_openai_embedding_deployment,
-        azure_endpoint=settings.azure_openai_endpoint,
-        api_version=settings.azure_openai_api_version,
-        azure_ad_token_provider=_token_provider,
-    )
-
-    vectorstore = AzureSearch(
-        azure_search_endpoint=settings.azure_search_endpoint,
-        azure_search_key=None,  # RBAC
-        index_name=_RTG_INDEX_NAME,
-        embedding_function=embeddings.embed_query,
-        credential=_credential,
-        search_type="hybrid",
-    )
+    vectorstore = get_vectorstore(_RTG_INDEX_NAME)
 
     # Extract search queries from the "## Search Queries" section
     queries: list[str] = []

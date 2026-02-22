@@ -13,19 +13,13 @@ from typing import Optional
 from urllib import parse as urlparse
 
 import requests
-from azure.identity import DefaultAzureCredential, get_bearer_token_provider
-from langchain_openai import AzureChatOpenAI
 from langchain_core.messages import HumanMessage, SystemMessage
 
 from app.config import get_settings
 from app.utils.token_counter import add_tokens
+from app.utils.llm_cache import get_chat_llm
 
 logger = logging.getLogger(__name__)
-
-_credential = DefaultAzureCredential()
-_token_provider = get_bearer_token_provider(
-    _credential, "https://cognitiveservices.azure.com/.default"
-)
 
 _tomtom_api_key = os.getenv("TOMTOM_MAPS_API_KEY", "")
 _azure_maps_sub_key = os.getenv("AZURE_MAPS_SUBSCRIPTION_KEY", "")
@@ -191,16 +185,7 @@ def _extract_locations(query: str) -> tuple[str, str]:
 
 async def _llm_extract_locations(query: str) -> tuple[str, str]:
     """Use the LLM to extract origin and destination from a complex query."""
-    settings = get_settings()
-    llm = AzureChatOpenAI(
-        azure_deployment=settings.azure_openai_chat_deployment,
-        azure_endpoint=settings.azure_openai_endpoint,
-        api_version=settings.azure_openai_api_version,
-        azure_ad_token_provider=_token_provider,
-        temperature=0,
-        request_timeout=30,
-    )
-    llm.name = "traffic-location-extractor"
+    llm = get_chat_llm(temperature=0.0, request_timeout=30, name="traffic-location-extractor")
 
     messages = [
         SystemMessage(
@@ -250,15 +235,7 @@ async def invoke(query: str, *, file_path: Optional[str] = None, **kwargs) -> st
     formatted = _format_traffic(traffic_data, origin, destination)
 
     # Use LLM to provide a conversational summary
-    llm = AzureChatOpenAI(
-        azure_deployment=settings.azure_openai_chat_deployment,
-        azure_endpoint=settings.azure_openai_endpoint,
-        api_version=settings.azure_openai_api_version,
-        azure_ad_token_provider=_token_provider,
-        temperature=0.7,
-        request_timeout=settings.request_timeout,
-    )
-    llm.name = "traffic-agent-llm"
+    llm = get_chat_llm(temperature=0.7, name="traffic-agent-llm")
 
     messages = [
         SystemMessage(

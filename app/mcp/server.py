@@ -14,7 +14,7 @@ from typing import Any, Optional
 
 from langsmith import traceable
 
-from app.agents import rag_agent, multimodal_agent, nasa_agent, general_agent, weather_agent, traffic_agent, sql_agent, viz_agent, cicp_agent, ida_agent
+from app.agents import rag_agent, multimodal_agent, nasa_agent, general_agent, weather_agent, traffic_agent, sql_agent, viz_agent, cicp_agent, ida_agent, fhir_agent, banking_agent
 
 logger = logging.getLogger(__name__)
 
@@ -188,6 +188,43 @@ TOOL_DEFINITIONS: list[dict[str, Any]] = [
             "required": ["query"],
         },
     },
+    {
+        "name": "fhir_convert",
+        "description": (
+            "FHIR Data Conversion Agent. Converts healthcare data (CSV, HL7v2, "
+            "CDA, free-text clinical notes) into valid FHIR R4 JSON resources. "
+            "Generates Patient, Observation, Condition, MedicationRequest, and "
+            "other FHIR resources with proper coding (SNOMED CT, LOINC, ICD-10)."
+        ),
+        "parameters": {
+            "type": "object",
+            "properties": {
+                "query": {"type": "string", "description": "The user's FHIR conversion or healthcare data question."},
+                "file_path": {
+                    "type": "string",
+                    "description": "Path to the source healthcare data file (CSV, JSON, XML, HL7, etc.).",
+                },
+            },
+            "required": ["query"],
+        },
+    },
+    {
+        "name": "banking_assist",
+        "description": (
+            "Banking Customer Service Agent. Answers questions about customer "
+            "accounts, transactions, loans, cards, fraud alerts, support tickets, "
+            "and branch information from the banking database. Also retrieves "
+            "bank policies, fee schedules, interest rates, overdraft rules, and "
+            "regulatory information from the bank policy handbook."
+        ),
+        "parameters": {
+            "type": "object",
+            "properties": {
+                "query": {"type": "string", "description": "The user's banking question."},
+            },
+            "required": ["query"],
+        },
+    },
 ]
 
 # Map tool names to agent invoke functions
@@ -202,6 +239,8 @@ _TOOL_HANDLERS = {
     "visualize_data": viz_agent.invoke,
     "cicp_process": cicp_agent.invoke,
     "ida_design": ida_agent.invoke,
+    "fhir_convert": fhir_agent.invoke,
+    "banking_assist": banking_agent.invoke,
 }
 
 
@@ -254,6 +293,8 @@ AGENT_TO_TOOL: dict[str, str] = {
     "viz": "visualize_data",
     "cicp": "cicp_process",
     "ida": "ida_design",
+    "fhir": "fhir_convert",
+    "banking": "banking_assist",
 }
 
 

@@ -12,19 +12,13 @@ import os
 from typing import Optional
 
 import requests
-from azure.identity import DefaultAzureCredential, get_bearer_token_provider
-from langchain_openai import AzureChatOpenAI
 from langchain_core.messages import HumanMessage, SystemMessage
 
 from app.config import get_settings
 from app.utils.token_counter import add_tokens
+from app.utils.llm_cache import get_chat_llm
 
 logger = logging.getLogger(__name__)
-
-_credential = DefaultAzureCredential()
-_token_provider = get_bearer_token_provider(
-    _credential, "https://cognitiveservices.azure.com/.default"
-)
 
 # Azure Maps credentials
 _azure_maps_sub_key = os.getenv("AZURE_MAPS_SUBSCRIPTION_KEY", "")
@@ -147,16 +141,7 @@ def _extract_location(query: str) -> str:
 
 async def _llm_extract_location(query: str) -> str:
     """Use the LLM to extract the weather location from a complex query."""
-    settings = get_settings()
-    llm = AzureChatOpenAI(
-        azure_deployment=settings.azure_openai_chat_deployment,
-        azure_endpoint=settings.azure_openai_endpoint,
-        api_version=settings.azure_openai_api_version,
-        azure_ad_token_provider=_token_provider,
-        temperature=0,
-        request_timeout=30,
-    )
-    llm.name = "weather-location-extractor"
+    llm = get_chat_llm(temperature=0.0, request_timeout=30, name="weather-location-extractor")
 
     messages = [
         SystemMessage(
@@ -203,15 +188,7 @@ async def invoke(query: str, *, file_path: Optional[str] = None, **kwargs) -> st
     formatted = _format_weather(weather_data, location_name)
 
     # Use LLM to provide a conversational summary alongside the data
-    llm = AzureChatOpenAI(
-        azure_deployment=settings.azure_openai_chat_deployment,
-        azure_endpoint=settings.azure_openai_endpoint,
-        api_version=settings.azure_openai_api_version,
-        azure_ad_token_provider=_token_provider,
-        temperature=0.7,
-        request_timeout=settings.request_timeout,
-    )
-    llm.name = "weather-agent-llm"
+    llm = get_chat_llm(temperature=0.7, name="weather-agent-llm")
 
     messages = [
         SystemMessage(
